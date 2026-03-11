@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Ingresar — EduLearn</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%23060612'/><rect x='6' y='14' width='20' height='3' fill='%23FFE000'/><rect x='10' y='10' width='12' height='5' fill='%23FFE000'/><rect x='14' y='8' width='4' height='3' fill='%23FFE000'/><rect x='18' y='17' width='2' height='5' fill='%23FF8C00'/><circle cx='19' cy='23' r='2' fill='%23FF8C00'/></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Orbitron:wght@400;700;900&display=swap">
+  <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"></noscript>
+  <link rel="stylesheet" href="login.css"/>
+  <meta name="theme-color" content="#060612">
+  <script defer src="login.js"></script>
+</head>
+<body>
+
+<!-- Scanlines overlay -->
+<div class="scanlines" aria-hidden="true"></div>
+<!-- Stars canvas -->
+<canvas id="stars-canvas" class="stars-canvas" aria-hidden="true"></canvas>
+
+<!-- LOADER -->
+<div id="loader">
+  <div class="loader-pixel">
+    <div class="ld-char">🎮</div>
+    <div class="ld-text">INICIANDO SESIÓN...</div>
+    <div class="ld-bar"><div class="ld-fill" id="ld-fill"></div></div>
+  </div>
+</div>
+
+<!-- MAIN SHELL -->
+<main class="shell">
+
+  <!-- LEFT PANEL: Art / Branding -->
+  <section class="panel panel-art">
+    <!-- Decorative grid bg -->
+    <div class="pixel-grid-bg" aria-hidden="true"></div>
+
+    <!-- Brand -->
+    <div class="brand">
+      <span class="brand-logo">Edu<span>Learn</span></span>
+      <span class="brand-tag">v4.0</span>
+    </div>
+
+    <!-- Hero copy -->
+    <div class="art-copy">
+      <div class="art-pre">⚡ PLATAFORMA EDUCATIVA PIXEL ⚡</div>
+      <h1 class="art-title">APRENDE.<br>GANA XP.<br>SUBE DE<br>NIVEL.</h1>
+      <p class="art-desc">Cursos interactivos, misiones diarias y un sistema de insignias que premia tu progreso.</p>
+      <ul class="art-bullets">
+        <li><span class="bullet-arrow">►</span> Rachas de estudio diarias</li>
+        <li><span class="bullet-arrow">►</span> Insignias y logros épicos</li>
+        <li><span class="bullet-arrow">►</span> XP real por cada lección</li>
+        <li><span class="bullet-arrow">►</span> Misiones y desafíos semanales</li>
+      </ul>
+    </div>
+
+    <!-- Stats bar -->
+    <div class="art-stats">
+      <div class="art-stat">
+        <span class="as-val">30+</span>
+        <span class="as-key">CURSOS</span>
+      </div>
+      <div class="art-stat">
+        <span class="as-val">∞</span>
+        <span class="as-key">XP</span>
+      </div>
+      <div class="art-stat">
+        <span class="as-val">24</span>
+        <span class="as-key">INSIGNIAS</span>
+      </div>
+      <div class="art-stat">
+        <span class="as-val">100%</span>
+        <span class="as-key">GRATIS</span>
+      </div>
+    </div>
+
+    <!-- Decorative floating image -->
+    <div class="art-img-wrap" aria-hidden="true">
+      <div class="art-img-frame">
+        <img src="https://images.pexels.com/photos/5212332/pexels-photo-5212332.jpeg?auto=compress&cs=tinysrgb&w=600" alt="Estudiante aprendiendo">
+        <div class="art-img-scanline"></div>
+        <div class="art-img-overlay"></div>
+      </div>
+      <div class="art-floating-badge ab1">⭐ +150 XP</div>
+      <div class="art-floating-badge ab2">🏆 NIVEL 7</div>
+      <div class="art-floating-badge ab3">🔥 RACHA ×12</div>
+    </div>
+
+    <!-- Corner decorations -->
+    <div class="corner-deco corner-tl" aria-hidden="true"></div>
+    <div class="corner-deco corner-br" aria-hidden="true"></div>
+  </section>
+
+  <!-- RIGHT PANEL: Login form -->
+  <section class="panel panel-form">
+    <div class="form-card">
+      <!-- Card header -->
+      <div class="fc-header">
+        <div class="fc-icon">👤</div>
+        <h2 class="fc-title">BIENVENIDO</h2>
+        <p class="fc-sub">Ingresa tus credenciales para continuar</p>
+      </div>
+
+      <!-- Divider -->
+      <div class="fc-divider">
+        <span>▸ ACCESO AL SISTEMA ◂</span>
+      </div>
+
+      <!-- Form -->
+      <form id="loginForm" novalidate>
+        <!-- Email -->
+        <div class="field-group">
+          <label class="field-label" for="email">📧 CORREO ELECTRÓNICO</label>
+          <div class="field-wrap" id="email-wrap">
+            <span class="field-icon"><i class="fa-regular fa-envelope"></i></span>
+            <input id="email" class="field-input" type="email" placeholder="tu@correo.com" required autocomplete="email"/>
+            <span class="field-status" id="email-status"></span>
+          </div>
+          <small class="field-error" id="emailErr" aria-live="polite"></small>
+        </div>
+
+        <!-- Password -->
+        <div class="field-group">
+          <label class="field-label" for="password">🔒 CONTRASEÑA</label>
+          <div class="field-wrap" id="pass-wrap">
+            <span class="field-icon"><i class="fa-regular fa-lock"></i></span>
+            <input id="password" class="field-input" type="password" placeholder="••••••••" minlength="6" required autocomplete="current-password"/>
+            <button type="button" class="field-toggle" id="togglePass" aria-label="Mostrar u ocultar contraseña">
+              <i class="fa-regular fa-eye"></i>
+            </button>
+          </div>
+          <small class="field-error" id="passErr" aria-live="polite"></small>
+        </div>
+
+        <!-- Remember + forgot -->
+        <div class="form-row">
+          <label class="chk-label">
+            <input id="remember" type="checkbox" class="chk-input"/>
+            <span class="chk-box"></span>
+            <span class="chk-text">RECORDARME</span>
+          </label>
+          <a href="#" class="form-link">¿OLVIDASTE TU CLAVE?</a>
+        </div>
+
+        <!-- Submit -->
+        <button class="btn-submit" type="submit" id="submitBtn">
+          <span id="submit-text">▶ INGRESAR AL SISTEMA</span>
+          <span id="submit-loading" class="btn-loading" hidden>⟳ CARGANDO...</span>
+        </button>
+
+        <!-- Social -->
+        <div class="social-row">
+          <div class="social-divider"><span>— O INGRESA CON —</span></div>
+          <div class="social-btns">
+            <button type="button" class="btn-social">
+              <i class="fa-brands fa-google"></i>
+              <span>GOOGLE</span>
+            </button>
+            <button type="button" class="btn-social">
+              <i class="fa-brands fa-facebook-f"></i>
+              <span>FACEBOOK</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Register link -->
+        <p class="form-register">¿NO TIENES CUENTA? <a href="cuenta.html" class="form-link">CREAR CUENTA ▶</a></p>
+      </form>
+
+    </div>
+
+    <!-- Footer -->
+    <p class="panel-foot">© 2025 EDULEARN · TODOS LOS DERECHOS RESERVADOS</p>
+  </section>
+
+</main>
+
+<!-- TOAST -->
+<div id="toast" role="status" aria-live="polite"></div>
+
+</body>
+</html>
