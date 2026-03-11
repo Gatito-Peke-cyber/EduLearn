@@ -1,19 +1,9 @@
 /* =====================================================
-   EduLearn — Perfil — JS v5.1
-   BASE: v5.0 COMPLETA sin quitar nada
-   AÑADIDO: conexión Firebase Auth + Firestore
-   - Import de auth/database
-   - onAuthChange reemplaza el init directo
-   - completeMission/markBuzonRead/logout guardan en Firestore
-   - Avatar también se guarda en Firestore
+   EduLearn — Perfil — JS v5.0
+   - NUEVO: Sección CALIFICACIONES con APROBADO / DESAPROBADO
+   - Muestra nota_final/20 por curso con colores y badges
+   - FIX: Muestra APROBADO / DESAPROBADO en inventario
    ===================================================== */
-
-/* ---- FIREBASE IMPORTS (único bloque nuevo) ---- */
-import { onAuthChange, logout as firebaseLogout } from './auth.js';
-import { syncAllToLocalStorage, addXP, saveMisionesEstado, saveBuzonEstado, updateUserProfile } from './database.js';
-
-let currentUID = null; // se llena cuando Firebase confirma sesión
-
 'use strict';
 
 /* ---- KEYS ---- */
@@ -66,12 +56,12 @@ const MISSION_DEF = {
     { id:'d06', name:'5 MINUTOS',       desc:'Pasa 5 minutos en la plataforma',     icon:'⏱', prog:0, max:1,  xp:10, tipo:'daily' },
   ],
   weekly: [
-    { id:'w01', name:'CURSOS x3',       desc:'Inscríbete en 3 cursos esta semana',  icon:'🎮', prog:0, max:3,  xp:60,        tipo:'weekly' },
-    { id:'w02', name:'RACHA x5',        desc:'5 días activos esta semana',          icon:'🔥', prog:0, max:5,  xp:80,        tipo:'weekly' },
-    { id:'w03', name:'ÁREA NUEVA',      desc:'Descubre una área de aprendizaje',    icon:'🌍', prog:0, max:1,  xp:50,        tipo:'weekly' },
+    { id:'w01', name:'CURSOS x3',       desc:'Inscríbete en 3 cursos esta semana',  icon:'🎮', prog:0, max:3,  xp:60,  tipo:'weekly' },
+    { id:'w02', name:'RACHA x5',        desc:'5 días activos esta semana',          icon:'🔥', prog:0, max:5,  xp:80,  tipo:'weekly' },
+    { id:'w03', name:'ÁREA NUEVA',      desc:'Descubre una área de aprendizaje',    icon:'🌍', prog:0, max:1,  xp:50,  tipo:'weekly' },
     { id:'w04', name:'XP x100',         desc:'Gana 100 XP esta semana',             icon:'⚡', prog:0, max:100,xp:10000000,  tipo:'weekly' },
-    { id:'w05', name:'COLECCIÓN',       desc:'Llega a 5 cursos inscritos en total', icon:'📦', prog:0, max:5,  xp:90,        tipo:'weekly' },
-    { id:'w06', name:'BUZÓN LIMPIO',    desc:'Lee todos los mensajes del buzón',    icon:'📭', prog:0, max:1,  xp:40,        tipo:'weekly' },
+    { id:'w05', name:'COLECCIÓN',       desc:'Llega a 5 cursos inscritos en total', icon:'📦', prog:0, max:5,  xp:90,  tipo:'weekly' },
+    { id:'w06', name:'BUZÓN LIMPIO',    desc:'Lee todos los mensajes del buzón',    icon:'📭', prog:0, max:1,  xp:40,  tipo:'weekly' },
   ],
   monthly: [
     { id:'m01', name:'MARATÓN',         desc:'Inscríbete en 10 cursos este mes',    icon:'🏃', prog:0, max:10, xp:200, tipo:'monthly' },
@@ -760,8 +750,7 @@ function renderMissions(){
   renderGroup(MISSION_DEF.monthly, '#mission-monthly');
 }
 
-/* MODIFICADO: async para guardar en Firebase además de localStorage */
-async function completeMission(mid){
+function completeMission(mid){
   const all = [...MISSION_DEF.daily,...MISSION_DEF.weekly,...MISSION_DEF.monthly];
   const m = all.find(x=>x.id===mid); if(!m) return;
   const mState = getMissions();
@@ -771,11 +760,6 @@ async function completeMission(mid){
   const p = getProfile();
   p.xp = (p.xp||0) + m.xp;
   lsSet(PROFILE_KEY, p);
-  /* +Firebase */
-  if(currentUID){
-    await addXP(currentUID, m.xp).catch(()=>{});
-    await saveMisionesEstado(currentUID, mState).catch(()=>{});
-  }
   addTimelineEvent({ icon:'⚔️', title:`Misión completada: ${m.name}`, detail:`+${m.xp} XP ganados` });
   toast(`⚔️ MISIÓN COMPLETADA: +${m.xp} XP`, 'var(--yellow)');
   renderMissions();
@@ -871,30 +855,24 @@ function renderBuzon(){
   });
 }
 
-/* MODIFICADO: async para guardar en Firebase */
-async function markBuzonRead(id){
+function markBuzonRead(id){
   const state = getBuzonState();
   if(state[id]) return;
   state[id] = true;
   lsSet(BUZON_KEY, state);
   const ms = getMissions();
   if(!ms.d05?.done){ ms.d05={prog:1,done:true}; lsSet(MISSION_KEY,ms); }
-  /* +Firebase */
-  if(currentUID) await saveBuzonEstado(currentUID, state).catch(()=>{});
   renderBuzon();
   renderMissions();
   toast('📬 MENSAJE LEÍDO', 'var(--yellow)');
 }
 
-/* MODIFICADO: async para guardar en Firebase */
-async function markAllBuzonRead(){
+function markAllBuzonRead(){
   const state = getBuzonState();
   BUZON_MESSAGES.forEach(m=>{ state[m.id]=true; });
   lsSet(BUZON_KEY, state);
   const ms = getMissions();
   if(!ms.w06?.done){ ms.w06={prog:1,done:true}; lsSet(MISSION_KEY,ms); }
-  /* +Firebase */
-  if(currentUID) await saveBuzonEstado(currentUID, state).catch(()=>{});
   renderBuzon();
   renderMissions();
   toast('📭 TODOS LOS MENSAJES LEÍDOS', 'var(--green)');
@@ -923,7 +901,6 @@ function initTabs(){
 }
 
 /* ---- AVATAR ---- */
-/* MODIFICADO: el click del opt es async para guardar avatar en Firebase */
 function initAvatar(){
   const btn   = $('#btn-change-avatar');
   const modal = $('#avatar-modal');
@@ -936,12 +913,10 @@ function initAvatar(){
     picker.innerHTML = AVATARS.map(av=>`
       <div class="av-opt ${av===p2.avatar?'selected':''}" data-av="${av}">${av}</div>`).join('');
     picker.querySelectorAll('.av-opt').forEach(opt=>{
-      opt.addEventListener('click', async ()=>{
+      opt.addEventListener('click',()=>{
         const p3 = getProfile();
         p3.avatar = opt.dataset.av;
         lsSet(PROFILE_KEY, p3);
-        /* +Firebase */
-        if(currentUID) await updateUserProfile(currentUID, {avatar: opt.dataset.av}).catch(()=>{});
         modal.classList.remove('show');
         document.body.style.overflow='';
         renderHeader();
@@ -1013,11 +988,10 @@ function initNav(){
 }
 
 /* ---- LOGOUT ---- */
-/* MODIFICADO: usa firebaseLogout en vez de solo borrar localStorage */
 function initLogout(){
-  $('#btn-logout')?.addEventListener('click', async ()=>{
+  $('#btn-logout')?.addEventListener('click',()=>{
     if(confirm('¿Cerrar sesión?')){
-      await firebaseLogout().catch(()=>{});
+      localStorage.removeItem(PROFILE_KEY);
       window.location.href = 'index.html';
     }
   });
@@ -1046,9 +1020,6 @@ function recordVisit(){
 }
 
 /* ---- INIT ---- */
-/* MODIFICADO: DOMContentLoaded espera onAuthChange de Firebase
-   para sincronizar datos antes de renderizar.
-   Todo lo demás se inicializa igual que en v5.0 */
 document.addEventListener('DOMContentLoaded', ()=>{
   hideLoader();
   initStars();
@@ -1063,20 +1034,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
   initLogout();
   initBackToTop();
   initCalifFilters();
+  recordVisit();
 
-  /* Esperar sesión Firebase antes de renderizar */
-  onAuthChange(async (user) => {
-    if(!user){
-      window.location.href = 'login.html';
-      return;
-    }
-    currentUID = user.uid;
-    /* Traer cursos, notas, perfil, misiones, buzón desde Firestore → localStorage */
-    await syncAllToLocalStorage(user.uid).catch(()=>{});
-    /* Mismo orden que v5.0 */
-    recordVisit();
-    renderHeader();
-    renderResumen();
-    renderBuzon();
-  });
+  renderHeader();
+  renderResumen();
+  renderBuzon();
 });
