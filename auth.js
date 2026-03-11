@@ -96,14 +96,17 @@ export async function loginWithGoogle() {
   try {
     const result = await signInWithPopup(auth, googleProvider);
     const user   = result.user;
-    const isNew  = result._tokenResponse?.isNewUser ?? false;
+
+    // ✅ Verificar en Firestore si ya tiene perfil (no usar _tokenResponse que es interna)
+    const existingProfile = await getUserProfile(user.uid);
+    const isNew = !existingProfile;
 
     if (isNew) {
       const profileData = {
-        nombre:   user.displayName || 'Estudiante',
-        email:    user.email,
-        avatar:   '🎓',
-        xp:       150, nivel: 1, racha: 0, horas: 0, completos: 0,
+        nombre:    user.displayName || 'Estudiante',
+        email:     user.email || '',
+        avatar:    '🎓',
+        xp: 150, nivel: 1, racha: 0, horas: 0, completos: 0,
         joinDate:  new Date().toISOString(),
         lastVisit: new Date().toISOString(),
       };
@@ -114,11 +117,20 @@ export async function loginWithGoogle() {
         { icon:'🌟', title:'¡Cuenta creada con Google!', detail:'+150 XP', fecha: new Date().toISOString() },
       ]));
     } else {
+      // ✅ Usuario existente → traer TODO su progreso de Firestore
       await syncAllToLocalStorage(user.uid);
     }
 
     return { user, isNew, error: null };
   } catch (err) {
+    console.error('[AUTH] loginWithGoogle:', err);
+    // Errores comunes de popup
+    if (err.code === 'auth/popup-blocked') {
+      return { user: null, isNew: false, error: 'POPUP BLOQUEADO — PERMITE POPUPS EN TU NAVEGADOR' };
+    }
+    if (err.code === 'auth/unauthorized-domain') {
+      return { user: null, isNew: false, error: 'DOMINIO NO AUTORIZADO EN FIREBASE CONSOLE' };
+    }
     return { user: null, isNew: false, error: translateError(err.code) };
   }
 }

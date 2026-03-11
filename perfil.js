@@ -388,9 +388,16 @@ async function completeMission(mid) {
 /* ─── TIMELINE ──────────────────────────────────── */
 function addTimelineEvent(ev){
   const events=getEvents();
-  events.unshift({...ev,fecha:new Date().toISOString()});
+  const newEvent = {...ev, fecha:new Date().toISOString()};
+  events.unshift(newEvent);
   if(events.length>50)events.pop();
   lsSet(EVENTS_KEY,events);
+  // ✅ También guardar en Firestore para sincronizar entre dispositivos
+  if(currentUID) {
+    import('./database.js').then(({addTimelineEventDB}) => {
+      addTimelineEventDB(currentUID, newEvent).catch(()=>{});
+    });
+  }
 }
 function renderTimeline(){
   const events=getEvents(),tl=$('#timeline'),empty=$('#timeline-empty');
@@ -554,20 +561,37 @@ document.addEventListener('DOMContentLoaded', () => {
   // Escuchar cambios de autenticación
   onAuthChange(async (user) => {
     if (!user) {
-      // No hay sesión → redirigir al login
       window.location.href = 'login.html';
       return;
     }
 
     currentUID = user.uid;
 
-    // Sincronizar datos frescos de Firebase al localStorage
+    // Mostrar loader mientras sincroniza
+    const loader = document.getElementById('loader');
+    if (loader) { loader.style.display = 'flex'; loader.style.opacity = '1'; }
+
+    // ✅ Siempre sincronizar TODO desde Firestore (funciona en cualquier dispositivo)
     await syncAllToLocalStorage(user.uid);
 
-    // Renderizar todo
+    // Ocultar loader
+    if (loader) {
+      loader.style.transition = 'opacity 0.4s';
+      loader.style.opacity = '0';
+      setTimeout(() => { loader.style.display = 'none'; }, 400);
+    }
+
+    // ✅ Re-renderizar TODAS las secciones con datos frescos
     recordVisit();
     renderHeader();
     renderResumen();
     renderBuzon();
+    renderBadges();
+    renderMissions();
+    renderCalificaciones();
+
+    // ✅ Re-renderizar la pestaña activa por si se cambió antes del sync
+    const activeTab = document.querySelector('.tab-btn.active');
+    if (activeTab) activeTab.click();
   });
 });

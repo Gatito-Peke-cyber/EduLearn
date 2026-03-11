@@ -283,23 +283,27 @@ export async function addInsignia(uid, badgeId) {
    ═══════════════════════════════════════════════════ */
 export async function syncAllToLocalStorage(uid) {
   try {
-    const [profile, enrollments, misiones, buzon] = await Promise.all([
+    const [profile, enrollments, misiones, buzon, timeline] = await Promise.all([
       getUserProfile(uid),
       getUserEnrollments(uid),
       getMisionesEstado(uid),
       getBuzonEstado(uid),
+      getTimelineDB(uid),
     ]);
 
     if (profile) {
-      // Limpiar campos Timestamp de Firestore que no se serializan bien
       const clean = { ...profile };
       delete clean.createdAt;
       delete clean.updatedAt;
       localStorage.setItem('perfil_usuario', JSON.stringify(clean));
     }
-    if (enrollments) localStorage.setItem('inscripciones',       JSON.stringify(enrollments));
-    if (misiones)    localStorage.setItem('misiones_estado_v4',  JSON.stringify(misiones));
-    if (buzon)       localStorage.setItem('buzon_estado',        JSON.stringify(buzon));
+    if (enrollments) localStorage.setItem('inscripciones',      JSON.stringify(enrollments));
+    if (misiones)    localStorage.setItem('misiones_estado_v4', JSON.stringify(misiones));
+    if (buzon)       localStorage.setItem('buzon_estado',       JSON.stringify(buzon));
+    // ✅ Sincronizar también el timeline de actividad
+    if (timeline && timeline.length > 0) {
+      localStorage.setItem('timeline_events', JSON.stringify(timeline));
+    }
 
     return { error: null };
   } catch (err) {
