@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Secundaria — EduLearn</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='64' height='64' fill='%230a0a1a'/%3E%3Crect x='22' y='10' width='20' height='14' fill='%23FFE000'/%3E%3Crect x='6' y='22' width='52' height='8' fill='%23FFE000'/%3E%3Crect x='50' y='28' width='4' height='18' fill='%23FF00AA'/%3E%3Crect x='46' y='44' width='12' height='6' fill='%23FF00AA'/%3E%3C/svg%3E">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet"/>
+  <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"></noscript>
+  <link rel="stylesheet" href="secundaria.css"/>
+</head>
+<body>
+
+<div class="scanlines" aria-hidden="true"></div>
+<div id="pixelStars" class="pixel-stars" aria-hidden="true"></div>
+
+<!-- LOADER -->
+<div id="loader">
+  <div class="loader-pixel">
+    <div class="ld-icon">🎮</div>
+    <div class="ld-text">CARGANDO...</div>
+    <div class="ld-bar"><div class="ld-fill" id="ldFill"></div></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast" role="status" aria-live="polite"></div>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="container nav-wrap">
+    <a href="dashboard.html" class="logo" aria-label="Inicio">Edu<span>Learn</span></a>
+    <nav id="mainNav" class="nav">
+      <a href="dashboard.html">🏠 INICIO</a>
+      <a href="#catalogo">📚 CATÁLOGO</a>
+      <a href="#temporales">⏳ TEMPORALES</a>
+      <a href="#sobre">ℹ️ SOBRE</a>
+      <a href="primaria.html" class="nav-pill">🎒 PRIMARIA</a>
+      <a href="perfil.html" class="nav-pill nav-pill-gold">👤 PERFIL</a>
+    </nav>
+    <div class="nav-cta">
+      <a class="btn btn-logout" href="index.html"><i class="fa-solid fa-right-from-bracket"></i> SALIR</a>
+      <button id="burger" class="hamburger" aria-label="Menú" aria-expanded="false" aria-controls="mainNav">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- HERO -->
+<section id="inicio" class="hero">
+  <div class="pixel-grid-bg" aria-hidden="true"></div>
+  <div class="container hero-inner">
+    <div class="hero-text reveal">
+      <div class="hero-subtitle-top">⚡ NIVEL: SECUNDARIA ⚡</div>
+      <h1 class="hero-title" id="heroTitle">SECUNDARIA</h1>
+      <p class="hero-desc">Elige tu aventura de aprendizaje. Ciencias, letras, idiomas, tecnología y arte. Supera retos, gana XP y desbloquea certificados.</p>
+      <div class="hero-actions">
+        <a href="#catalogo" class="btn btn-primary"><i class="fa-solid fa-play"></i> EXPLORAR CURSOS</a>
+        <a href="#temporales" class="btn btn-soft"><i class="fa-solid fa-clock"></i> TEMPORALES</a>
+      </div>
+      <div class="hero-stats">
+        <div class="hs-item"><span class="hs-val">30+</span><span class="hs-label">CURSOS</span></div>
+        <div class="hs-item"><span class="hs-val">5</span><span class="hs-label">ÁREAS</span></div>
+        <div class="hs-item"><span class="hs-val">∞</span><span class="hs-label">XP</span></div>
+        <div class="hs-item"><span class="hs-val">100%</span><span class="hs-label">GRATIS</span></div>
+      </div>
+    </div>
+    <div class="hero-art reveal" aria-hidden="true">
+      <div class="pixel-char">
+        <div class="pc-screen">
+          <img src="https://images.pexels.com/photos/5212332/pexels-photo-5212332.jpeg?auto=compress&cs=tinysrgb&w=600" alt="Estudiante">
+          <div class="pc-scanline"></div>
+        </div>
+        <div class="pc-decoration">
+          <span class="pcd pcd1">⭐ +50 XP</span>
+          <span class="pcd pcd2">🏆 NIVEL 5</span>
+          <span class="pcd pcd3">📚 APROBADO</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CONTROLES -->
+<section class="controls">
+  <div class="container">
+    <div class="toolbar">
+      <div class="search-group">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="search" id="searchInput" placeholder="BUSCAR CURSOS...">
+      </div>
+      <div class="filters">
+        <select id="areaFilter"><option value="todas">TODAS LAS ÁREAS</option><option value="ciencias">CIENCIAS</option><option value="letras">LETRAS</option><option value="idiomas">IDIOMAS</option><option value="tecnologia">TECNOLOGÍA</option><option value="arte">ARTE</option></select>
+        <select id="gradoFilter"><option value="todos">TODOS LOS GRADOS</option><option value="1">GRADO 1°</option><option value="2">GRADO 2°</option><option value="3">GRADO 3°</option><option value="4">GRADO 4°</option><option value="5">GRADO 5°</option></select>
+        <select id="ordenSelect"><option value="relevancia">RELEVANCIA</option><option value="nombre-asc">A → Z</option><option value="nombre-desc">Z → A</option><option value="nuevos">MÁS NUEVOS</option><option value="populares">MÁS POPULARES</option><option value="duracion">DURACIÓN</option></select>
+      </div>
+      <div class="quick-actions">
+        <button id="btnFavoritos" class="btn btn-fav"><i class="fa-solid fa-heart"></i> FAVS</button>
+        <button id="btnReset" class="btn btn-reset"><i class="fa-solid fa-rotate"></i> RESET</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CATALOGO -->
+<section id="catalogo" class="catalogo">
+  <div class="container">
+    <div class="section-header">
+      <div class="sh-pixel">▶▶▶</div>
+      <h2 class="section-title">CATÁLOGO — SECUNDARIA</h2>
+      <div class="sh-pixel">◀◀◀</div>
+    </div>
+    <p class="section-subtitle">Selecciona tu curso y comienza tu aventura de aprendizaje</p>
+    <div id="coursesGrid" class="grid" aria-live="polite"></div>
+    <div class="pagination">
+      <button id="prevPage" class="page-btn" disabled>◀ ANTERIOR</button>
+      <ul id="pageList" class="page-list"></ul>
+      <button id="nextPage" class="page-btn">SIGUIENTE ▶</button>
+    </div>
+  </div>
+</section>
+
+<!-- TEMPORALES -->
+<section id="temporales" class="temporales">
+  <div class="container">
+    <div class="section-header">
+      <div class="sh-pixel blink-text">⚠</div>
+      <h2 class="section-title">CURSOS TEMPORALES</h2>
+      <div class="sh-pixel blink-text">⚠</div>
+    </div>
+    <p class="section-subtitle">⏳ ¡Atención! Cursos con fecha de inicio y fin. Inscríbete solo mientras estén activos.</p>
+    <div id="tempGrid" class="temp-grid" aria-live="polite"></div>
+  </div>
+</section>
+
+<!-- SOBRE -->
+<section id="sobre" class="sobre">
+  <div class="container sobre-grid">
+    <div class="sobre-text reveal">
+      <div class="sobre-pixel-header">[ SOBRE SECUNDARIA ]</div>
+      <h3>¿POR QUÉ ESTA SECCIÓN?</h3>
+      <p>Diseñados para desarrollar competencias clave: pensamiento crítico, comunicación efectiva, resolución de problemas y tecnología.</p>
+      <ul class="pixel-checks">
+        <li><span class="check-pixel">►</span> Rutas por área y grado</li>
+        <li><span class="check-pixel">►</span> Proyectos guiados</li>
+        <li><span class="check-pixel">►</span> Evaluaciones formativas</li>
+        <li><span class="check-pixel">►</span> Certificados digitales</li>
+      </ul>
+    </div>
+    <div class="sobre-img reveal">
+      <div class="pixel-frame">
+        <img src="https://images.pexels.com/photos/4144222/pexels-photo-4144222.jpeg?auto=compress&cs=tinysrgb&w=800" alt="Aula">
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="container footer-grid">
+    <div><a class="logo" href="#inicio">Edu<span>Learn</span></a><p class="f-desc">Secundaria: tu ruta hacia el conocimiento profundo.</p></div>
+    <div><h5>SECCIONES</h5><ul class="f-links"><li><a href="#catalogo">Catálogo</a></li><li><a href="#temporales">Temporales</a></li><li><a href="primaria.html">Primaria</a></li></ul></div>
+    <div><h5>APRENDIZAJE</h5><ul class="f-links"><li><a href="perfil.html">Mi Perfil</a></li><li><a href="dashboard.html">Dashboard</a></li></ul></div>
+    <div><h5>SÍGUENOS</h5><div class="socials"><a href="#"><i class="fa-brands fa-facebook-f"></i></a><a href="#"><i class="fa-brands fa-x-twitter"></i></a><a href="#"><i class="fa-brands fa-instagram"></i></a><a href="#"><i class="fa-brands fa-youtube"></i></a></div></div>
+  </div>
+  <div class="subfooter"><div class="container"><p>© 2025 EduLearn · <a href="#">Privacidad</a> · <a href="#">Términos</a></p></div></div>
+</footer>
+
+<!-- MODAL -->
+<div id="courseModal" class="modal" aria-hidden="true" role="dialog" aria-modal="true">
+  <div class="modal-dialog">
+    <button class="modal-close" aria-label="Cerrar"><i class="fa-solid fa-xmark"></i></button>
+    <div class="modal-body"></div>
+  </div>
+</div>
+
+<button id="backToTop" class="back-to-top" aria-label="Volver arriba"><i class="fa-solid fa-arrow-up"></i></button>
+<span class="sr-only" id="sr-live" aria-live="polite"></span>
+
+<script defer src="secundaria.js"></script>
+</body>
+</html>

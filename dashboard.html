@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>EduLearn — Inicio</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='64' height='64' fill='%230a0a1a'/%3E%3Crect x='22' y='10' width='20' height='14' fill='%23FFE000'/%3E%3Crect x='6' y='22' width='52' height='8' fill='%23FFE000'/%3E%3Crect x='50' y='28' width='4' height='18' fill='%23FF00AA'/%3E%3Crect x='46' y='44' width='12' height='6' fill='%23FF00AA'/%3E%3C/svg%3E">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet"/>
+  <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"></noscript>
+  <link rel="stylesheet" href="dashboard.css"/>
+</head>
+<body>
+
+<div class="scanlines" aria-hidden="true"></div>
+<div id="pixelStars" class="pixel-stars" aria-hidden="true"></div>
+
+<!-- LOADER -->
+<div id="loader">
+  <div class="loader-inner">
+    <div class="ld-logo">EDU<span>LEARN</span></div>
+    <div class="ld-bar-wrap">
+      <div class="ld-bar"><div class="ld-fill" id="ldFill"></div></div>
+      <div class="ld-pct" id="ldPct">0%</div>
+    </div>
+    <div class="ld-msg" id="ldMsg">INICIANDO SISTEMA...</div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast" role="status" aria-live="polite"></div>
+
+<!-- HEADER -->
+<header class="header" id="mainHeader">
+  <div class="container nav-wrap">
+    <a href="dashboard.html" class="logo" aria-label="Inicio">Edu<span>Learn</span></a>
+    <nav id="mainNav" class="nav">
+      <a href="#inicio">🏠 INICIO</a>
+      <a href="primaria.html" class="nav-pill nav-pill-green">🎒 PRIMARIA</a>
+      <a href="secundaria.html" class="nav-pill nav-pill-blue">📘 SECUNDARIA</a>
+      <a href="perfil.html" class="nav-pill nav-pill-gold">👤 PERFIL</a>
+    </nav>
+    <div class="nav-cta">
+      <a class="btn btn-logout" href="index.html"><i class="fa-solid fa-right-from-bracket"></i> SALIR</a>
+      <button id="burger" class="hamburger" aria-label="Menú" aria-expanded="false" aria-controls="mainNav">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- TICKER -->
+<div class="ticker-band" aria-hidden="true">
+  <div class="ticker-inner">
+    <span>⚡ NUEVOS CURSOS DISPONIBLES</span>
+    <span>★</span>
+    <span>🏆 +50 XP AL INSCRIBIRTE HOY</span>
+    <span>★</span>
+    <span>🎮 DESBLOQUEA INSIGNIAS ÉPICAS</span>
+    <span>★</span>
+    <span>📚 +30 CURSOS PARA SECUNDARIA</span>
+    <span>★</span>
+    <span>🌟 CERTIFICADOS DIGITALES GRATUITOS</span>
+    <span>★</span>
+    <span>⚡ NUEVOS CURSOS DISPONIBLES</span>
+    <span>★</span>
+    <span>🏆 +50 XP AL INSCRIBIRTE HOY</span>
+    <span>★</span>
+  </div>
+</div>
+
+<!-- ===== HERO ===== -->
+<section id="inicio" class="hero">
+  <div class="hero-grid-bg" aria-hidden="true"></div>
+  <div class="container hero-inner">
+    <div class="hero-text reveal">
+      <div class="hero-chip">▶ BIENVENIDO A EDULEARN ◀</div>
+      <h1 class="hero-title">APRENDE.<br>SUBE DE NIVEL.<br><span class="ht-accent">GANA XP.</span></h1>
+      <p class="hero-desc">La plataforma de aprendizaje más épica para primaria y secundaria. Explora cursos, supera misiones, desbloquea insignias y demuestra que eres el mejor jugador del conocimiento.</p>
+      <div class="hero-btns">
+        <a href="secundaria.html" class="btn btn-primary"><i class="fa-solid fa-play"></i> EMPEZAR AVENTURA</a>
+        <a href="#ofrecemos" class="btn btn-soft"><i class="fa-solid fa-star"></i> VER CURSOS</a>
+      </div>
+      <div class="hero-counters">
+        <div class="hc-item"><span class="hc-val counter-hero" data-target="12000">0</span><span class="hc-label">JUGADORES</span></div>
+        <div class="hc-sep">|</div>
+        <div class="hc-item"><span class="hc-val counter-hero" data-target="60">0</span><span class="hc-label">CURSOS</span></div>
+        <div class="hc-sep">|</div>
+        <div class="hc-item"><span class="hc-val counter-hero" data-target="95">0</span><span class="hc-label">% SATISFACCIÓN</span></div>
+        <div class="hc-sep">|</div>
+        <div class="hc-item"><span class="hc-val counter-hero" data-target="24">0</span><span class="hc-label">INSIGNIAS</span></div>
+      </div>
+    </div>
+
+    <!-- HUD Panel -->
+    <div class="hero-hud reveal" aria-label="Panel de jugador">
+      <div class="hud-frame">
+        <div class="hud-top-bar">
+          <span class="hud-logo-txt">PLAYER STATUS</span>
+          <span class="hud-live blink-txt">◉ LIVE</span>
+        </div>
+        <div class="hud-avatar-row">
+          <div class="hud-avatar-wrap"><div class="hud-avatar" id="hudAvatar">🎓</div></div>
+          <div class="hud-player-info">
+            <div class="hud-name" id="hudName">INVITADO</div>
+            <div class="hud-lv-row">
+              <span class="hud-lv-chip">LV <span id="hudLv">1</span></span>
+              <div class="hud-xp-track"><div class="hud-xp-fill" id="hudXpFill" style="width:5%"></div></div>
+            </div>
+            <div class="hud-xp-label"><span id="hudXpVal">0</span> / <span id="hudXpNext">100</span> XP</div>
+          </div>
+        </div>
+        <div class="hud-stats-grid">
+          <div class="hud-stat hs-yellow"><span class="hst-ico">🎮</span><span class="hst-n" id="hsCursos">0</span><span class="hst-k">CURSOS</span></div>
+          <div class="hud-stat hs-cyan">  <span class="hst-ico">🏆</span><span class="hst-n" id="hsInsig">0</span><span class="hst-k">INSIGNIAS</span></div>
+          <div class="hud-stat hs-red">   <span class="hst-ico">🔥</span><span class="hst-n" id="hsRacha">0</span><span class="hst-k">RACHA</span></div>
+          <div class="hud-stat hs-green">  <span class="hst-ico">⭐</span><span class="hst-n" id="hsXp">0</span><span class="hst-k">XP TOTAL</span></div>
+        </div>
+        <div class="hud-nav-btns">
+          <a href="primaria.html"   class="hud-nav-btn hud-btn-green">🎒 PRIMARIA</a>
+          <a href="secundaria.html" class="hud-nav-btn hud-btn-blue">📘 SECUNDARIA</a>
+          <a href="perfil.html"     class="hud-nav-btn hud-btn-yellow">👤 VER PERFIL</a>
+        </div>
+        <div class="hud-c hud-tl"></div><div class="hud-c hud-tr"></div>
+        <div class="hud-c hud-bl"></div><div class="hud-c hud-br"></div>
+      </div>
+    </div>
+  </div>
+  <div class="hero-scroll-hint"><span class="blink-txt">▼ SCROLL PARA EXPLORAR ▼</span></div>
+</section>
+
+<!-- ===== PORTALS ===== -->
+<section class="portals">
+  <div class="container">
+    <div class="portals-grid">
+      <a href="primaria.html" class="portal-card portal-primaria reveal">
+        <div class="portal-glow"></div>
+        <div class="portal-icon">🎒</div>
+        <div class="portal-info">
+          <div class="portal-label">NIVEL</div>
+          <div class="portal-name">PRIMARIA</div>
+          <div class="portal-sub">Grados 1° — 6° · Mates, Lectura, Ciencias y más</div>
+        </div>
+        <div class="portal-arr">▶</div>
+        <div class="portal-badge">20+ CURSOS</div>
+      </a>
+      <a href="secundaria.html" class="portal-card portal-secundaria reveal">
+        <div class="portal-glow"></div>
+        <div class="portal-icon">📘</div>
+        <div class="portal-info">
+          <div class="portal-label">NIVEL</div>
+          <div class="portal-name">SECUNDARIA</div>
+          <div class="portal-sub">Grados 1° — 5° · Física, Química, Código y más</div>
+        </div>
+        <div class="portal-arr">▶</div>
+        <div class="portal-badge">30+ CURSOS</div>
+      </a>
+      <a href="perfil.html" class="portal-card portal-perfil reveal">
+        <div class="portal-glow"></div>
+        <div class="portal-icon">🏆</div>
+        <div class="portal-info">
+          <div class="portal-label">PROGRESO</div>
+          <div class="portal-name">MI PERFIL</div>
+          <div class="portal-sub">XP · Insignias · Misiones · Calificaciones</div>
+        </div>
+        <div class="portal-arr">▶</div>
+        <div class="portal-badge portal-badge-new">NUEVO</div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ===== QUÉ OFRECEMOS ===== -->
+<section id="ofrecemos" class="features">
+  <div class="container">
+    <div class="section-header">
+      <div class="sh-pixel">▶▶▶</div>
+      <h2 class="section-title">¿QUÉ OFRECEMOS?</h2>
+      <div class="sh-pixel">◀◀◀</div>
+    </div>
+    <p class="section-subtitle">Recursos modernos, pensados para que aprendas de forma épica y divertida</p>
+    <div class="features-grid">
+      <article class="feat-card reveal">
+        <div class="feat-img-wrap">
+          <img src="https://images.pexels.com/photos/4145153/pexels-photo-4145153.jpeg?auto=compress&cs=tinysrgb&w=600" alt="Cursos" loading="lazy">
+          <div class="feat-overlay"></div>
+          <div class="feat-badge-icon">📚</div>
+        </div>
+        <div class="feat-body">
+          <div class="feat-tag ft-yellow">APRENDIZAJE</div>
+          <h3 class="feat-title">CURSOS INTERACTIVOS</h3>
+          <p class="feat-desc">Videos, quizzes y proyectos cortos. Progreso guardado automáticamente.</p>
+          <div class="feat-xp-bar"><div style="width:75%"></div></div>
+          <div class="feat-xp-lbl">+XP POR CURSO</div>
+        </div>
+      </article>
+      <article class="feat-card reveal">
+        <div class="feat-img-wrap">
+          <img src="https://images.pexels.com/photos/4143800/pexels-photo-4143800.jpeg?auto=compress&cs=tinysrgb&w=600" alt="Tecnología" loading="lazy">
+          <div class="feat-overlay"></div>
+          <div class="feat-badge-icon">💻</div>
+        </div>
+        <div class="feat-body">
+          <div class="feat-tag ft-magenta">TECNOLOGÍA</div>
+          <h3 class="feat-title">MULTI-DISPOSITIVO</h3>
+          <p class="feat-desc">Interfaz rápida y accesible. Funciona en celular, tablet o PC.</p>
+          <div class="feat-xp-bar"><div style="width:100%"></div></div>
+          <div class="feat-xp-lbl">100% RESPONSIVE</div>
+        </div>
+      </article>
+      <article class="feat-card reveal">
+        <div class="feat-img-wrap">
+          <img src="https://images.pexels.com/photos/3184324/pexels-photo-3184324.jpeg?auto=compress&cs=tinysrgb&w=600" alt="Comunidad" loading="lazy">
+          <div class="feat-overlay"></div>
+          <div class="feat-badge-icon">👥</div>
+        </div>
+        <div class="feat-body">
+          <div class="feat-tag ft-green">COMUNIDAD</div>
+          <h3 class="feat-title">APRENDE CON OTROS</h3>
+          <p class="feat-desc">Comparte logros y avanza junto a miles de estudiantes activos.</p>
+          <div class="feat-xp-bar"><div style="width:90%"></div></div>
+          <div class="feat-xp-lbl">+12,000 JUGADORES</div>
+        </div>
+      </article>
+      <article class="feat-card reveal">
+        <div class="feat-img-wrap">
+          <img src="https://images.pexels.com/photos/3184312/pexels-photo-3184312.jpeg?auto=compress&cs=tinysrgb&w=600" alt="Gamificación" loading="lazy">
+          <div class="feat-overlay"></div>
+          <div class="feat-badge-icon">🎮</div>
+        </div>
+        <div class="feat-body">
+          <div class="feat-tag ft-cyan">GAMIFICACIÓN</div>
+          <h3 class="feat-title">XP, INSIGNIAS Y NIVELES</h3>
+          <p class="feat-desc">Sistema RPG completo. Misiones diarias y recompensas épicas.</p>
+          <div class="feat-xp-bar"><div style="width:88%"></div></div>
+          <div class="feat-xp-lbl">24 INSIGNIAS ÉPICAS</div>
+        </div>
+      </article>
+      <article class="feat-card reveal">
+        <div class="feat-img-wrap">
+          <img src="https://images.pexels.com/photos/5212332/pexels-photo-5212332.jpeg?auto=compress&cs=tinysrgb&w=600" alt="Certificados" loading="lazy">
+          <div class="feat-overlay"></div>
+          <div class="feat-badge-icon">🏆</div>
+        </div>
+        <div class="feat-body">
+          <div class="feat-tag ft-orange">CERTIFICADOS</div>
+          <h3 class="feat-title">CERTIFICADOS DIGITALES</h3>
+          <p class="feat-desc">Al completar cada curso obtienes un certificado verificable. ¡Gratis!</p>
+          <div class="feat-xp-bar"><div style="width:60%"></div></div>
+          <div class="feat-xp-lbl">VERIFICABLES EN LÍNEA</div>
+        </div>
+      </article>
+      <article class="feat-card reveal">
+        <div class="feat-img-wrap">
+          <img src="https://images.pexels.com/photos/4145190/pexels-photo-4145190.jpeg?auto=compress&cs=tinysrgb&w=600" alt="Misiones" loading="lazy">
+          <div class="feat-overlay"></div>
+          <div class="feat-badge-icon">⚔️</div>
+        </div>
+        <div class="feat-body">
+          <div class="feat-tag ft-purple">MISIONES</div>
+          <h3 class="feat-title">MISIONES Y RETOS</h3>
+          <p class="feat-desc">Misiones diarias, semanales y mensuales con recompensas de XP.</p>
+          <div class="feat-xp-bar"><div style="width:70%"></div></div>
+          <div class="feat-xp-lbl">NUEVAS MISIONES CADA DÍA</div>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ===== PARTNERS ===== -->
+<section class="partners">
+  <div class="container">
+    <div class="partners-label">⭐ APOYADO POR ⭐</div>
+    <div class="partners-strip">
+      <div class="partner-item">Google</div>
+      <span class="partner-sep">◆</span>
+      <div class="partner-item">Microsoft</div>
+      <span class="partner-sep">◆</span>
+      <div class="partner-item">UNESCO</div>
+      <span class="partner-sep">◆</span>
+      <div class="partner-item">UNICEF</div>
+      <span class="partner-sep">◆</span>
+      <div class="partner-item">Intel</div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== CÓMO FUNCIONA ===== -->
+<section id="how" class="how-section">
+  <div class="container">
+    <div class="section-header">
+      <div class="sh-pixel">▶▶▶</div>
+      <h2 class="section-title">CÓMO FUNCIONA</h2>
+      <div class="sh-pixel">◀◀◀</div>
+    </div>
+    <p class="section-subtitle">4 pasos para convertirte en el maestro del conocimiento</p>
+    <div class="steps-grid">
+      <div class="step-card reveal">
+        <div class="step-num">01</div>
+        <div class="step-icon">🔑</div>
+        <h3 class="step-title">INGRESA</h3>
+        <p class="step-desc">Crea tu cuenta o inicia sesión en segundos. Tu progreso se guarda en todos los dispositivos.</p>
+        <div class="step-conn">▶</div>
+      </div>
+      <div class="step-card reveal">
+        <div class="step-num">02</div>
+        <div class="step-icon">🗺️</div>
+        <h3 class="step-title">EXPLORA</h3>
+        <p class="step-desc">Elige primaria o secundaria. Filtra por área y grado. Más de 50 cursos disponibles.</p>
+        <div class="step-conn">▶</div>
+      </div>
+      <div class="step-card reveal">
+        <div class="step-num">03</div>
+        <div class="step-icon">⚔️</div>
+        <h3 class="step-title">APRENDE</h3>
+        <p class="step-desc">Completa módulos, supera quizzes y acumula XP. Cada logro te acerca al siguiente nivel.</p>
+        <div class="step-conn">▶</div>
+      </div>
+      <div class="step-card reveal">
+        <div class="step-num">04</div>
+        <div class="step-icon">🏆</div>
+        <h3 class="step-title">CELEBRA</h3>
+        <p class="step-desc">Desbloquea insignias, sube de nivel y obtén certificados digitales. ¡Muéstrale al mundo!</p>
+        <div class="step-conn step-last"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== STATS ===== -->
+<section id="stats" class="stats-section">
+  <div class="container">
+    <div class="section-header">
+      <div class="sh-pixel blink-txt">■</div>
+      <h2 class="section-title">EN NÚMEROS</h2>
+      <div class="sh-pixel blink-txt">■</div>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card reveal"><div class="sc-glow g-yellow"></div><div class="sc-icon">🎓</div><div class="sc-val counter-val" data-target="12000">0</div><div class="sc-lbl">ESTUDIANTES ACTIVOS</div><div class="sc-bar"><div class="scb g-yellow-fill" style="width:80%"></div></div></div>
+      <div class="stat-card reveal"><div class="sc-glow g-cyan"></div><div class="sc-icon">📚</div><div class="sc-val counter-val" data-target="60">0</div><div class="sc-lbl">CURSOS DISPONIBLES</div><div class="sc-bar"><div class="scb g-cyan-fill" style="width:60%"></div></div></div>
+      <div class="stat-card reveal"><div class="sc-glow g-green"></div><div class="sc-icon">⭐</div><div class="sc-val counter-val" data-target="95">0</div><div class="sc-lbl">% SATISFACCIÓN</div><div class="sc-bar"><div class="scb g-green-fill" style="width:95%"></div></div></div>
+      <div class="stat-card reveal"><div class="sc-glow g-magenta"></div><div class="sc-icon">🏅</div><div class="sc-val counter-val" data-target="24">0</div><div class="sc-lbl">INSIGNIAS ÉPICAS</div><div class="sc-bar"><div class="scb g-magenta-fill" style="width:70%"></div></div></div>
+      <div class="stat-card reveal"><div class="sc-glow g-orange"></div><div class="sc-icon">🎖️</div><div class="sc-val counter-val" data-target="180">0</div><div class="sc-lbl">DOCENTES EXPERTOS</div><div class="sc-bar"><div class="scb g-orange-fill" style="width:50%"></div></div></div>
+      <div class="stat-card reveal"><div class="sc-glow g-purple"></div><div class="sc-icon">📜</div><div class="sc-val counter-val" data-target="8500">0</div><div class="sc-lbl">CERTIFICADOS EMITIDOS</div><div class="sc-bar"><div class="scb g-purple-fill" style="width:65%"></div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== TESTIMONIOS ===== -->
+<section id="testimonios" class="testimonios">
+  <div class="container">
+    <div class="section-header">
+      <div class="sh-pixel">▶▶▶</div>
+      <h2 class="section-title">LO QUE DICEN LOS JUGADORES</h2>
+      <div class="sh-pixel">◀◀◀</div>
+    </div>
+    <p class="section-subtitle">Miles de estudiantes ya están subiendo de nivel</p>
+    <div class="carousel-wrap">
+      <button class="car-btn" id="carPrev" aria-label="Anterior">◀</button>
+      <div class="carousel-viewport">
+        <div class="carousel-track" id="carTrack">
+          <div class="testi-card">
+            <div class="testi-avatar">👦</div>
+            <div class="testi-stars">⭐⭐⭐⭐⭐</div>
+            <blockquote>"Mejoré mis notas en matemáticas y ahora estudiar se siente como jugar un RPG. ¡Las misiones diarias me mantienen activo!"</blockquote>
+            <div class="testi-name">— LUIS, 15 años</div>
+            <div class="testi-lv">NIVEL 8 · 2400 XP</div>
+          </div>
+          <div class="testi-card">
+            <div class="testi-avatar">👧</div>
+            <div class="testi-stars">⭐⭐⭐⭐⭐</div>
+            <blockquote>"Las explicaciones son súper claras y las actividades interactivas hacen que aprenda sin aburrirme. ¡Mis favoritas son las de inglés!"</blockquote>
+            <div class="testi-name">— ANA, 12 años</div>
+            <div class="testi-lv">NIVEL 5 · 1100 XP</div>
+          </div>
+          <div class="testi-card">
+            <div class="testi-avatar">🧑</div>
+            <div class="testi-stars">⭐⭐⭐⭐⭐</div>
+            <blockquote>"Las insignias me motivan un montón. Ya desbloqueé la de 'Racha x7' y no pienso parar. EduLearn cambió cómo aprendo."</blockquote>
+            <div class="testi-name">— DIEGO, 14 años</div>
+            <div class="testi-lv">NIVEL 11 · 4200 XP</div>
+          </div>
+          <div class="testi-card">
+            <div class="testi-avatar">👧</div>
+            <div class="testi-stars">⭐⭐⭐⭐⭐</div>
+            <blockquote>"El mejor apoyo para aprender desde casa. La sección de primaria tiene actividades perfectas para mi edad. ¡Me saco buenas notas!"</blockquote>
+            <div class="testi-name">— SOFÍA, 10 años</div>
+            <div class="testi-lv">NIVEL 4 · 750 XP</div>
+          </div>
+        </div>
+      </div>
+      <button class="car-btn" id="carNext" aria-label="Siguiente">▶</button>
+    </div>
+    <div class="car-dots" id="carDots"></div>
+  </div>
+</section>
+
+<!-- ===== FAQ ===== -->
+<section id="faq" class="faq-section">
+  <div class="container">
+    <div class="section-header">
+      <div class="sh-pixel">▶▶▶</div>
+      <h2 class="section-title">PREGUNTAS FRECUENTES</h2>
+      <div class="sh-pixel">◀◀◀</div>
+    </div>
+    <p class="section-subtitle">Todo lo que necesitas saber sobre tu aventura</p>
+    <div class="faq-grid">
+      <div class="faq-item reveal"><button class="faq-btn" aria-expanded="false"><span>¿Necesito pagar para usar EduLearn?</span><span class="faq-ic">▶</span></button><div class="faq-panel"><p>Puedes empezar completamente gratis. Todos los cursos, insignias y certificados son gratuitos. ¡Sin tarjeta de crédito requerida!</p></div></div>
+      <div class="faq-item reveal"><button class="faq-btn" aria-expanded="false"><span>¿Hay contenido para primaria y secundaria?</span><span class="faq-ic">▶</span></button><div class="faq-panel"><p>Sí. Tenemos rutas adaptadas por nivel y edad. Primaria (grados 1–6) con actividades visuales y lúdicas, y Secundaria (grados 1–5) con proyectos y retos avanzados.</p></div></div>
+      <div class="faq-item reveal"><button class="faq-btn" aria-expanded="false"><span>¿Cómo funciona el sistema de XP e insignias?</span><span class="faq-ic">▶</span></button><div class="faq-panel"><p>Al inscribirte en cursos, completar misiones y mantener tu racha de estudio, acumulas XP que sube tu nivel. Hay 24 insignias desbloqueables por diferentes logros.</p></div></div>
+      <div class="faq-item reveal"><button class="faq-btn" aria-expanded="false"><span>¿Puedo usarlo desde el celular?</span><span class="faq-ic">▶</span></button><div class="faq-panel"><p>Totalmente. El diseño es 100% responsive. Funciona en cualquier dispositivo moderno sin necesidad de descargar apps.</p></div></div>
+      <div class="faq-item reveal"><button class="faq-btn" aria-expanded="false"><span>¿Cómo obtengo mis certificados?</span><span class="faq-ic">▶</span></button><div class="faq-panel"><p>Al completar un curso y aprobar su evaluación final, recibirás un certificado digital verificable en tu perfil, gratis para siempre.</p></div></div>
+      <div class="faq-item reveal"><button class="faq-btn" aria-expanded="false"><span>¿Qué son los cursos temporales?</span><span class="faq-ic">▶</span></button><div class="faq-panel"><p>Son talleres intensivos de duración limitada con contenido exclusivo y bonos de XP especiales. ¡Inscríbete antes de que caduquen!</p></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== NEWSLETTER ===== -->
+<section class="newsletter-section">
+  <div class="container">
+    <div class="news-card reveal">
+      <div class="news-deco" aria-hidden="true"><span>⚡</span><span>★</span><span>⚡</span></div>
+      <h3 class="news-title">¿LISTO PARA SUBIR DE NIVEL?</h3>
+      <p class="news-sub">Déjanos tu correo y te avisamos de nuevos cursos, talleres épicos y eventos especiales.</p>
+      <form id="newsForm" class="news-form" novalidate>
+        <div class="news-input-wrap">
+          <i class="fa-solid fa-envelope"></i>
+          <input type="email" id="newsEmail" placeholder="TU@EMAIL.COM" aria-label="Correo" required>
+        </div>
+        <button type="submit" class="btn btn-primary">⚡ SUSCRIBIRME</button>
+      </form>
+      <div id="newsMsg" class="news-msg" role="status" aria-live="polite"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== CTA FINAL ===== -->
+<section class="cta-final">
+  <div class="container">
+    <div class="cta-box reveal">
+      <div class="cta-pixel-top">[ ⚡ MISIÓN DISPONIBLE ⚡ ]</div>
+      <h2 class="cta-title">COMIENZA TU VIAJE<br>DE APRENDIZAJE HOY</h2>
+      <p class="cta-desc">Más de 12,000 estudiantes ya están subiendo de nivel. ¿Te vas a quedar atrás?</p>
+      <div class="cta-btns">
+        <a href="primaria.html" class="btn btn-primary">🎒 IR A PRIMARIA</a>
+        <a href="secundaria.html" class="btn btn-soft">📘 IR A SECUNDARIA</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== FOOTER ===== -->
+<footer class="footer">
+  <div class="container footer-grid">
+    <div>
+      <a class="logo" href="#inicio">Edu<span>Learn</span></a>
+      <p class="f-desc">Educación interactiva para primaria y secundaria. Aprende, sube de nivel y conquista el conocimiento.</p>
+      <div class="f-socials">
+        <a href="#" aria-label="Facebook"><i class="fa-brands fa-facebook-f"></i></a>
+        <a href="#" aria-label="Twitter"><i class="fa-brands fa-x-twitter"></i></a>
+        <a href="#" aria-label="Instagram"><i class="fa-brands fa-instagram"></i></a>
+        <a href="#" aria-label="YouTube"><i class="fa-brands fa-youtube"></i></a>
+      </div>
+    </div>
+    <div>
+      <h5>SECCIONES</h5>
+      <ul class="f-links">
+        <li><a href="primaria.html">🎒 Primaria</a></li>
+        <li><a href="secundaria.html">📘 Secundaria</a></li>
+        <li><a href="perfil.html">👤 Mi Perfil</a></li>
+        <li><a href="#ofrecemos">⭐ Ofrecemos</a></li>
+      </ul>
+    </div>
+    <div>
+      <h5>APRENDIZAJE</h5>
+      <ul class="f-links">
+        <li><a href="#how">🎮 Cómo funciona</a></li>
+        <li><a href="#stats">📊 Estadísticas</a></li>
+        <li><a href="#faq">❓ FAQ</a></li>
+        <li><a href="#testimonios">💬 Testimonios</a></li>
+      </ul>
+    </div>
+    <div>
+      <h5>PLATAFORMA</h5>
+      <ul class="f-links">
+        <li><a href="#">Soporte</a></li>
+        <li><a href="#">Privacidad</a></li>
+        <li><a href="#">Términos</a></li>
+        <li><a href="#">Contacto</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="subfooter">
+    <div class="container">
+      <p>© 2025 EduLearn · <a href="#">Privacidad</a> · <a href="#">Términos</a> · Hecho con ❤️ para estudiantes</p>
+    </div>
+  </div>
+</footer>
+
+<button id="backToTop" class="back-to-top" aria-label="Volver arriba"><i class="fa-solid fa-arrow-up"></i></button>
+
+<script defer src="dashboard.js"></script>
+</body>
+</html>

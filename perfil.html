@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>EduLearn — Mi Perfil</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%23060612'/><rect x='6' y='14' width='20' height='3' fill='%23FFE000'/><rect x='10' y='10' width='12' height='5' fill='%23FFE000'/><rect x='14' y='8' width='4' height='3' fill='%23FFE000'/><rect x='18' y='17' width='2' height='5' fill='%23FF8C00'/><circle cx='19' cy='23' r='2' fill='%23FF8C00'/></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Orbitron:wght@400;700;900&display=swap">
+  <link rel="stylesheet" href="perfil.css">
+</head>
+<body>
+
+<div class="scanlines"></div>
+<canvas id="stars-canvas" class="stars-canvas"></canvas>
+
+<!-- LOADER -->
+<div id="loader">
+  <div class="loader-pixel">
+    <div class="ld-char">👤</div>
+    <div class="ld-text">CARGANDO PERFIL...</div>
+    <div class="ld-bar"><div class="ld-fill" id="ld-fill"></div></div>
+  </div>
+</div>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="container nav-wrap">
+    <div class="logo">Edu<span>Learn</span></div>
+    <nav class="nav" id="main-nav">
+      <a href="index.html" class="nav-pill nav-pill-home">🏠 INICIO</a>
+      <a href="primaria.html" class="nav-pill nav-pill-green">🎒 PRIMARIA</a>
+      <a href="secundaria.html" class="nav-pill nav-pill-blue">📘 SECUNDARIA</a>
+    </nav>
+    <div class="nav-cta">
+      <span id="xp-display" class="xp-badge">⚡ 0 XP</span>
+      <button class="btn btn-logout" id="btn-logout">✕ SALIR</button>
+    </div>
+    <button class="hamburger" id="hamburger" aria-label="menú">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</header>
+
+<!-- PROFILE HERO -->
+<section class="profile-hero">
+  <div class="container">
+    <div class="profile-hero-inner">
+      <!-- Avatar block -->
+      <div class="avatar-block">
+        <div class="avatar-frame" id="avatar-frame">
+          <div class="avatar-pixel" id="avatar-display">🎓</div>
+          <div class="avatar-scan"></div>
+          <div class="avatar-ring"></div>
+        </div>
+        <button class="btn btn-change-avatar" id="btn-change-avatar">🎨 CAMBIAR</button>
+      </div>
+      <!-- Info block -->
+      <div class="profile-info">
+        <div class="profile-tag" id="profile-tag">▸ JUGADOR</div>
+        <h1 class="profile-name" id="profile-name">INVITADO</h1>
+        <div class="profile-email" id="profile-email">—</div>
+        <div class="level-row">
+          <span class="level-chip">Nv. <span id="level-num">1</span></span>
+          <div class="xp-bar-wrap">
+            <div class="xp-bar-track">
+              <div class="xp-bar-fill" id="xp-bar-fill" style="width:0%"></div>
+            </div>
+            <div class="xp-label"><span id="xp-val">0</span> / <span id="xp-next">100</span> XP</div>
+          </div>
+        </div>
+        <div class="quick-stats" id="quick-stats">
+          <div class="qs-item">
+            <span class="qs-val" id="stat-cursos">0</span>
+            <span class="qs-key">CURSOS</span>
+          </div>
+          <div class="qs-item">
+            <span class="qs-val" id="stat-insignias">0</span>
+            <span class="qs-key">INSIGNIAS</span>
+          </div>
+          <div class="qs-item">
+            <span class="qs-val" id="stat-racha">0</span>
+            <span class="qs-key">RACHA</span>
+          </div>
+          <div class="qs-item">
+            <span class="qs-val" id="stat-xp">0</span>
+            <span class="qs-key">XP TOTAL</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TABS -->
+<div class="tabs-bar">
+  <div class="container">
+    <div class="tabs" id="tabs">
+      <button class="tab active" data-tab="resumen">📊 RESUMEN</button>
+      <button class="tab" data-tab="cursos">🎮 MIS CURSOS</button>
+      <button class="tab" data-tab="insignias">🏆 INSIGNIAS</button>
+      <button class="tab" data-tab="misiones">⚔️ MISIONES</button>
+      <button class="tab tab-calif" data-tab="calificaciones">📋 CALIFICACIONES</button>
+      <button class="tab" data-tab="actividad">📜 ACTIVIDAD</button>
+      <button class="tab tab-buzon" data-tab="buzon">📬 BUZÓN</button>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN CONTENT -->
+<main class="main-content">
+  <div class="container">
+
+    <!-- ===== RESUMEN ===== -->
+    <section id="tab-resumen" class="tab-panel active">
+      <div class="resumen-grid">
+        <!-- Stats cards -->
+        <div class="stat-card">
+          <div class="sc-icon">🎮</div>
+          <div class="sc-val" id="rc-cursos">0</div>
+          <div class="sc-key">Cursos Inscritos</div>
+          <div class="sc-bar"><div class="sc-bar-fill" id="rc-bar-cursos" style="width:0%"></div></div>
+        </div>
+        <div class="stat-card">
+          <div class="sc-icon">✅</div>
+          <div class="sc-val" id="rc-completos">0</div>
+          <div class="sc-key">Completados</div>
+          <div class="sc-bar"><div class="sc-bar-fill green" id="rc-bar-comp" style="width:0%"></div></div>
+        </div>
+        <div class="stat-card">
+          <div class="sc-icon">⏱</div>
+          <div class="sc-val" id="rc-horas">0h</div>
+          <div class="sc-key">Horas Aprendidas</div>
+          <div class="sc-bar"><div class="sc-bar-fill cyan" id="rc-bar-horas" style="width:0%"></div></div>
+        </div>
+        <div class="stat-card">
+          <div class="sc-icon">🔥</div>
+          <div class="sc-val" id="rc-racha">0</div>
+          <div class="sc-key">Racha de Días</div>
+          <div class="sc-bar"><div class="sc-bar-fill orange" id="rc-bar-racha" style="width:0%"></div></div>
+        </div>
+
+        <!-- Radar / Areas -->
+        <div class="resumen-areas">
+          <h3 class="section-title-sm">🗺️ ÁREAS DE APRENDIZAJE</h3>
+          <div class="areas-list" id="areas-list"></div>
+        </div>
+
+        <!-- Recientes -->
+        <div class="resumen-recientes">
+          <h3 class="section-title-sm">⏱ ACTIVIDAD RECIENTE</h3>
+          <div id="resumen-timeline"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== MIS CURSOS ===== -->
+    <section id="tab-cursos" class="tab-panel">
+      <div class="cursos-controls">
+        <div class="search-bar">
+          <span>🔍</span>
+          <input type="text" id="curso-search" placeholder="BUSCAR CURSO...">
+        </div>
+        <div class="curso-filters">
+          <select id="curso-filter-estado">
+            <option value="">TODO</option>
+            <option value="en_progreso">EN PROGRESO</option>
+            <option value="completado">COMPLETADOS</option>
+            <option value="temporal">TALLERES</option>
+          </select>
+          <select id="curso-filter-tipo">
+            <option value="">TODO TIPO</option>
+            <option value="permanente">CURSOS</option>
+            <option value="temporal">TALLERES</option>
+          </select>
+        </div>
+      </div>
+      <!-- RPG Inventory Grid -->
+      <div class="inventory-grid" id="inventory-grid"></div>
+    </section>
+
+    <!-- ===== INSIGNIAS ===== -->
+    <section id="tab-insignias" class="tab-panel">
+      <div class="badges-header">
+        <div class="badges-progress">
+          <span class="bp-count" id="badges-earned">0</span>
+          <span class="bp-sep">/</span>
+          <span class="bp-total" id="badges-total">24</span>
+          <span class="bp-label">INSIGNIAS DESBLOQUEADAS</span>
+        </div>
+        <div class="badges-bar-wrap">
+          <div class="badges-bar-track"><div class="badges-bar-fill" id="badges-bar-fill" style="width:0%"></div></div>
+        </div>
+      </div>
+      <div class="badges-filter" id="badges-filter">
+        <button class="bf-btn active" data-cat="">TODAS</button>
+        <button class="bf-btn" data-cat="progreso">📈 PROGRESO</button>
+        <button class="bf-btn" data-cat="racha">🔥 RACHA</button>
+        <button class="bf-btn" data-cat="cursos">🎮 CURSOS</button>
+        <button class="bf-btn" data-cat="tiempo">⏱ TIEMPO</button>
+        <button class="bf-btn" data-cat="legendaria">👑 LEGENDARIA</button>
+        <button class="bf-btn" data-cat="oculta">❓ OCULTA</button>
+      </div>
+      <div class="badges-grid" id="badges-grid"></div>
+    </section>
+
+    <!-- ===== MISIONES ===== -->
+    <section id="tab-misiones" class="tab-panel">
+      <div class="missions-layout">
+        <div class="missions-col">
+          <h3 class="section-title-sm">⚡ DIARIAS</h3>
+          <div id="mission-daily"></div>
+        </div>
+        <div class="missions-col">
+          <h3 class="section-title-sm">📅 SEMANALES</h3>
+          <div id="mission-weekly"></div>
+        </div>
+        <div class="missions-col">
+          <h3 class="section-title-sm">🏆 MENSUALES</h3>
+          <div id="mission-monthly"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== CALIFICACIONES ===== -->
+    <section id="tab-calificaciones" class="tab-panel">
+      <!-- HUD de estadísticas -->
+      <div class="calif-hud">
+        <div class="calif-hud-title">▸ REPORTE DE MISIONES</div>
+        <div class="calif-hud-stats">
+          <div class="calif-hud-stat chs-aprobado">
+            <div class="chs-icon">🏆</div>
+            <div class="chs-val big" id="calif-aprobados">0</div>
+            <div class="chs-key">APROBADOS</div>
+            <div class="chs-bar-track"><div class="chs-bar-fill" id="chs-bar-aprobados" style="width:0%"></div></div>
+          </div>
+          <div class="calif-hud-stat chs-desaprobado">
+            <div class="chs-icon">💀</div>
+            <div class="chs-val big" id="calif-desaprobados">0</div>
+            <div class="chs-key">DESAPROBADOS</div>
+            <div class="chs-bar-track"><div class="chs-bar-fill" id="chs-bar-desaprobados" style="width:0%"></div></div>
+          </div>
+          <div class="calif-hud-stat chs-pendiente">
+            <div class="chs-icon">⏳</div>
+            <div class="chs-val big" id="calif-pendientes">0</div>
+            <div class="chs-key">SIN EXAMEN</div>
+            <div class="chs-bar-track"><div class="chs-bar-fill" style="width:0%;background:var(--muted)"></div></div>
+          </div>
+          <div class="calif-hud-stat chs-promedio">
+            <div class="chs-icon">⚡</div>
+            <div class="chs-val med" id="calif-promedio">—</div>
+            <div class="chs-key">PROMEDIO</div>
+            <div class="chs-bar-track"><div class="chs-bar-fill" id="chs-bar-promedio" style="width:0%"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filtro de calificaciones -->
+      <div class="calif-filter-row">
+        <button class="cf-btn cf-todos active" data-cf="">▸ TODOS</button>
+        <button class="cf-btn cf-aprobado" data-cf="aprobado">🏆 APROBADOS</button>
+        <button class="cf-btn cf-desaprobado" data-cf="desaprobado">💀 DESAPROBADOS</button>
+        <button class="cf-btn cf-pendiente" data-cf="pendiente">⏳ PENDIENTES</button>
+      </div>
+
+      <!-- Lista de calificaciones -->
+      <div class="calif-list" id="calif-list"></div>
+      <div class="calif-empty" id="calif-empty" style="display:none">
+        <div class="ce-icon">📋</div>
+        <p>NO HAY CURSOS EN ESTA CATEGORÍA</p>
+      </div>
+    </section>
+
+    <!-- ===== ACTIVIDAD ===== -->
+    <section id="tab-actividad" class="tab-panel">
+      <div class="activity-header">
+        <button class="btn btn-sm" id="btn-clear-timeline">🗑 LIMPIAR</button>
+      </div>
+      <div class="timeline" id="timeline"></div>
+      <div class="timeline-empty" id="timeline-empty" style="display:none">
+        <p>📭 Sin actividad registrada aún</p>
+      </div>
+    </section>
+
+    <!-- ===== BUZÓN ===== -->
+    <section id="tab-buzon" class="tab-panel">
+      <div class="buzon-header">
+        <div class="buzon-title-row">
+          <span class="buzon-icon-blink">📬</span>
+          <h2 class="buzon-title">BUZÓN DE MENSAJES</h2>
+          <span class="buzon-badge" id="buzon-unread-count">0</span>
+        </div>
+        <div class="buzon-actions">
+          <button class="btn btn-sm btn-mark-all" id="btn-mark-all">✓ MARCAR TODO LEÍDO</button>
+          <select id="buzon-filter" class="buzon-select">
+            <option value="">TODOS</option>
+            <option value="novedad">🆕 NOVEDADES</option>
+            <option value="recordatorio">⏰ RECORDATORIOS</option>
+            <option value="logro">🏆 LOGROS</option>
+            <option value="sistema">🔧 SISTEMA</option>
+          </select>
+        </div>
+      </div>
+      <div class="buzon-list" id="buzon-list"></div>
+      <div class="buzon-empty" id="buzon-empty" style="display:none">
+        <div class="be-icon">📭</div>
+        <p>NO HAY MENSAJES EN ESTA CATEGORÍA</p>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<!-- AVATAR PICKER MODAL -->
+<div class="modal" id="avatar-modal">
+  <div class="modal-dialog sm">
+    <button class="modal-close" id="avatar-modal-close">✕</button>
+    <div class="modal-body">
+      <h3 class="modal-title">🎨 ELIGE TU AVATAR</h3>
+      <div class="avatar-picker" id="avatar-picker"></div>
+    </div>
+  </div>
+</div>
+
+<!-- BADGE CELEBRATE MODAL -->
+<div class="modal" id="badge-modal">
+  <div class="modal-dialog sm">
+    <button class="modal-close" id="badge-modal-close">✕</button>
+    <div class="modal-body" id="badge-modal-body"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- BACK TO TOP -->
+<button class="back-to-top" id="back-top">▲</button>
+
+<script type="module" src="perfil.js"></script>
+</body>
+</html>

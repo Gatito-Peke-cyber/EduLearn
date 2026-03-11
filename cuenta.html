@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Crear Cuenta — EduLearn</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%23060612'/><rect x='6' y='14' width='20' height='3' fill='%23FFE000'/><rect x='10' y='10' width='12' height='5' fill='%23FFE000'/><rect x='14' y='8' width='4' height='3' fill='%23FFE000'/><rect x='18' y='17' width='2' height='5' fill='%23FF8C00'/><circle cx='19' cy='23' r='2' fill='%23FF8C00'/></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Orbitron:wght@400;700;900&display=swap">
+  <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"></noscript>
+  <link rel="stylesheet" href="cuenta.css"/>
+  <meta name="theme-color" content="#060612">
+</head>
+<body>
+
+<!-- Scanlines -->
+<div class="scanlines" aria-hidden="true"></div>
+<canvas id="stars-canvas" class="stars-canvas" aria-hidden="true"></canvas>
+
+<!-- LOADER -->
+<div id="loader">
+  <div class="loader-pixel">
+    <div class="ld-char">🌟</div>
+    <div class="ld-text">CREANDO JUGADOR...</div>
+    <div class="ld-bar"><div class="ld-fill" id="ld-fill"></div></div>
+  </div>
+</div>
+
+<!-- MAIN SHELL -->
+<main class="shell">
+
+  <!-- ════ LEFT PANEL: ART ════ -->
+  <section class="panel panel-art">
+    <div class="pixel-grid-bg" aria-hidden="true"></div>
+
+    <!-- Brand -->
+    <div class="brand">
+      <span class="brand-logo">Edu<span>Learn</span></span>
+      <span class="brand-tag">v4.0</span>
+    </div>
+
+    <!-- Copy -->
+    <div class="art-copy">
+      <div class="art-pre">🌟 ÚNETE A LA AVENTURA 🌟</div>
+      <h1 class="art-title">CREA TU<br>CUENTA.<br>EMPIEZA<br>HOY.</h1>
+      <p class="art-desc">Tu aventura educativa comienza con un solo paso. Regístrate gratis y desbloquea todo el contenido.</p>
+    </div>
+
+    <!-- Perks -->
+    <div class="art-perks">
+      <div class="perk-item">
+        <span class="perk-icon">🎓</span>
+        <span class="perk-text">Acceso a todos los cursos</span>
+        <span class="perk-xp">GRATIS</span>
+      </div>
+      <div class="perk-item">
+        <span class="perk-icon">⚡</span>
+        <span class="perk-text">Bono de bienvenida al registrarte</span>
+        <span class="perk-xp">+150 XP</span>
+      </div>
+      <div class="perk-item">
+        <span class="perk-icon">🏆</span>
+        <span class="perk-text">Insignia "Primer Paso" gratis</span>
+        <span class="perk-xp">+30 XP</span>
+      </div>
+      <div class="perk-item">
+        <span class="perk-icon">🔥</span>
+        <span class="perk-text">Misiones y rachas diarias</span>
+        <span class="perk-xp">∞ XP</span>
+      </div>
+      <div class="perk-item">
+        <span class="perk-icon">📬</span>
+        <span class="perk-text">Buzón de novedades y logros</span>
+        <span class="perk-xp">ACTIVO</span>
+      </div>
+    </div>
+
+    <!-- Rank preview -->
+    <div class="rank-preview">
+      <div class="rp-title">▸ RANGOS DE JUGADOR</div>
+      <div class="rp-ranks">
+        <div class="rp-rank active">
+          <span class="rp-icon">🌱</span>
+          <span class="rp-name">NOVATO</span>
+          <span class="rp-lv">Nv.1</span>
+        </div>
+        <div class="rp-rank">
+          <span class="rp-icon">⭐</span>
+          <span class="rp-name">APRENDIZ</span>
+          <span class="rp-lv">Nv.5</span>
+        </div>
+        <div class="rp-rank">
+          <span class="rp-icon">💫</span>
+          <span class="rp-name">EXPERTO</span>
+          <span class="rp-lv">Nv.10</span>
+        </div>
+        <div class="rp-rank">
+          <span class="rp-icon">👑</span>
+          <span class="rp-name">LEYENDA</span>
+          <span class="rp-lv">Nv.15</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Art image -->
+    <div class="art-img-wrap" aria-hidden="true">
+      <div class="art-img-frame">
+        <img src="https://images.pexels.com/photos/4144923/pexels-photo-4144923.jpeg?auto=compress&cs=tinysrgb&w=600" alt="Estudiante">
+        <div class="art-img-scanline"></div>
+        <div class="art-img-overlay"></div>
+      </div>
+      <div class="art-floating-badge ab1">🌟 NUEVO JUGADOR</div>
+      <div class="art-floating-badge ab2">⚡ +150 XP BONO</div>
+      <div class="art-floating-badge ab3">🎓 NIVEL 1</div>
+    </div>
+
+    <div class="corner-deco corner-tl" aria-hidden="true"></div>
+    <div class="corner-deco corner-br" aria-hidden="true"></div>
+  </section>
+
+  <!-- ════ RIGHT PANEL: FORM ════ -->
+  <section class="panel panel-form">
+    <div class="form-card">
+
+      <!-- Header -->
+      <div class="fc-header">
+        <div class="fc-icon" id="avatar-preview">🌟</div>
+        <h2 class="fc-title">CREAR CUENTA</h2>
+        <p class="fc-sub">Completa los datos para comenzar tu aventura</p>
+      </div>
+
+      <!-- Steps indicator -->
+      <div class="form-steps" id="form-steps">
+        <div class="step active" id="step-1">
+          <div class="step-dot">1</div>
+          <div class="step-label">DATOS</div>
+        </div>
+        <div class="step" id="step-2">
+          <div class="step-dot">2</div>
+          <div class="step-label">AVATAR</div>
+        </div>
+        <div class="step" id="step-3">
+          <div class="step-dot">3</div>
+          <div class="step-label">LISTO</div>
+        </div>
+      </div>
+
+      <div class="fc-divider"><span>▸ REGISTRO DE JUGADOR ◂</span></div>
+
+      <!-- ══ STEP 1: Datos ══ -->
+      <div id="panel-step-1">
+        <form id="registerForm" novalidate>
+
+          <!-- Nombre + Apellido -->
+          <div class="form-row-2">
+            <div class="field-group">
+              <label class="field-label" for="nombre">👤 NOMBRE</label>
+              <div class="field-wrap" id="nombre-wrap">
+                <span class="field-icon"><i class="fa-regular fa-user"></i></span>
+                <input id="nombre" class="field-input" type="text" placeholder="Tu nombre" required autocomplete="given-name"/>
+                <span class="field-status" id="nombre-status"></span>
+              </div>
+              <small class="field-error" id="nombreErr" aria-live="polite"></small>
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="apellido">👤 APELLIDO</label>
+              <div class="field-wrap" id="apellido-wrap">
+                <span class="field-icon"><i class="fa-regular fa-user"></i></span>
+                <input id="apellido" class="field-input" type="text" placeholder="Tu apellido" required autocomplete="family-name"/>
+                <span class="field-status" id="apellido-status"></span>
+              </div>
+              <small class="field-error" id="apellidoErr" aria-live="polite"></small>
+            </div>
+          </div>
+
+          <!-- Email -->
+          <div class="field-group">
+            <label class="field-label" for="email">📧 CORREO ELECTRÓNICO</label>
+            <div class="field-wrap" id="email-wrap">
+              <span class="field-icon"><i class="fa-regular fa-envelope"></i></span>
+              <input id="email" class="field-input" type="email" placeholder="tu@correo.com" required autocomplete="email"/>
+              <span class="field-status" id="email-status"></span>
+            </div>
+            <small class="field-error" id="emailErr" aria-live="polite"></small>
+          </div>
+
+          <!-- Password -->
+          <div class="field-group">
+            <label class="field-label" for="password">🔒 CONTRASEÑA</label>
+            <div class="field-wrap" id="pass-wrap">
+              <span class="field-icon"><i class="fa-regular fa-lock"></i></span>
+              <input id="password" class="field-input" type="password" placeholder="Mínimo 6 caracteres" minlength="6" required autocomplete="new-password"/>
+              <button type="button" class="field-toggle" id="togglePass1" aria-label="Mostrar contraseña">
+                <i class="fa-regular fa-eye"></i>
+              </button>
+            </div>
+            <!-- Strength meter -->
+            <div class="strength-wrap" id="strength-wrap" style="display:none">
+              <div class="strength-bars">
+                <div class="strength-bar" id="sb1"></div>
+                <div class="strength-bar" id="sb2"></div>
+                <div class="strength-bar" id="sb3"></div>
+                <div class="strength-bar" id="sb4"></div>
+              </div>
+              <div class="strength-label" id="strength-label">—</div>
+            </div>
+            <small class="field-error" id="passErr" aria-live="polite"></small>
+          </div>
+
+          <!-- Confirm Password -->
+          <div class="field-group">
+            <label class="field-label" for="confirm">🔒 CONFIRMAR CONTRASEÑA</label>
+            <div class="field-wrap" id="confirm-wrap">
+              <span class="field-icon"><i class="fa-regular fa-lock"></i></span>
+              <input id="confirm" class="field-input" type="password" placeholder="Repite tu contraseña" required autocomplete="new-password"/>
+              <button type="button" class="field-toggle" id="togglePass2" aria-label="Mostrar contraseña">
+                <i class="fa-regular fa-eye"></i>
+              </button>
+            </div>
+            <small class="field-error" id="confirmErr" aria-live="polite"></small>
+          </div>
+
+          <!-- Terms -->
+          <div class="terms-row">
+            <label class="chk-label">
+              <input id="terms" type="checkbox" class="chk-input" required/>
+              <span class="chk-box"></span>
+              <span class="chk-text">ACEPTO LOS <a href="#" class="form-link">TÉRMINOS</a> Y <a href="#" class="form-link">POLÍTICA DE PRIVACIDAD</a></span>
+            </label>
+          </div>
+          <small class="field-error" id="termsErr" aria-live="polite"></small>
+
+          <!-- XP reward hint -->
+          <div class="xp-reward-preview">
+            <span class="xr-icon">🎁</span>
+            <span class="xr-text">¡RECIBIRÁS +150 XP DE BIENVENIDA AL REGISTRARTE!</span>
+          </div>
+
+          <!-- Submit -->
+          <button class="btn-submit" type="submit" id="submitBtn">
+            <span id="submit-text">▶ SIGUIENTE PASO</span>
+            <span id="submit-loading" class="btn-loading" hidden>⟳ VERIFICANDO...</span>
+          </button>
+
+          <!-- Social -->
+          <div class="social-row">
+            <div class="social-divider"><span>— O REGÍSTRATE CON —</span></div>
+            <div class="social-btns">
+              <button type="button" class="btn-social" id="btn-google">
+                <i class="fa-brands fa-google"></i><span>GOOGLE</span>
+              </button>
+              <button type="button" class="btn-social" id="btn-facebook">
+                <i class="fa-brands fa-facebook-f"></i><span>FACEBOOK</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Login link -->
+          <p class="form-login">¿YA TIENES CUENTA? <a href="login.html" class="form-link">INGRESAR ▶</a></p>
+
+        </form>
+      </div>
+
+      <!-- ══ STEP 2: Elegir Avatar ══ -->
+      <div id="panel-step-2" style="display:none">
+        <p class="avatar-label">🎨 ELIGE TU AVATAR DE JUGADOR</p>
+        <div class="avatar-row" id="avatar-picker"></div>
+
+        <div class="field-group" style="margin-top:10px">
+          <label class="field-label" for="nickname">🎮 APODO (OPCIONAL)</label>
+          <div class="field-wrap">
+            <span class="field-icon"><i class="fa-regular fa-gamepad"></i></span>
+            <input id="nickname" class="field-input" type="text" placeholder="Tu alias de jugador" maxlength="20" autocomplete="off"/>
+          </div>
+        </div>
+
+        <div class="xp-reward-preview" style="margin-top:14px">
+          <span class="xr-icon">🎭</span>
+          <span class="xr-text">¡TU AVATAR APARECERÁ EN TU PERFIL Y RANKING!</span>
+        </div>
+
+        <button class="btn-submit" id="btn-confirm-avatar" style="margin-top:14px">
+          ▶ CREAR MI CUENTA
+        </button>
+        <button class="btn-submit" id="btn-back" style="background:var(--surface);color:var(--muted);border:2px solid var(--border);box-shadow:2px 2px 0 #000;margin-top:6px">
+          ◀ VOLVER
+        </button>
+      </div>
+
+      <!-- ══ STEP 3: Éxito ══ -->
+      <div id="panel-step-3" style="display:none;text-align:center;padding:14px 0">
+        <div style="font-size:3.5rem;margin-bottom:14px;animation:float 3s ease-in-out infinite">🎉</div>
+        <div style="font-family:var(--font-pixel);font-size:0.6rem;animation:colorCycle 2s linear infinite;margin-bottom:10px">¡CUENTA CREADA!</div>
+        <div style="font-family:var(--font-vt);font-size:1.1rem;color:var(--muted);margin-bottom:18px">
+          Bienvenido/a a EduLearn. Revisa tu correo para verificar tu cuenta.
+        </div>
+        <div style="display:flex;gap:8px;flex-direction:column">
+          <div style="display:flex;align-items:center;gap:8px;background:rgba(57,255,20,0.05);border:2px solid rgba(57,255,20,0.2);padding:10px;box-shadow:2px 2px 0 #000">
+            <span style="font-size:1.2rem">⚡</span>
+            <span style="font-family:var(--font-pixel);font-size:0.3rem;color:var(--green)">+150 XP DE BIENVENIDA AÑADIDOS</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;background:rgba(255,224,0,0.05);border:2px solid rgba(255,224,0,0.2);padding:10px;box-shadow:2px 2px 0 #000">
+            <span style="font-size:1.2rem">🌱</span>
+            <span style="font-family:var(--font-pixel);font-size:0.3rem;color:var(--yellow)">INSIGNIA "PRIMER PASO" DESBLOQUEADA</span>
+          </div>
+        </div>
+        <button class="btn-submit" id="btn-go-profile" style="margin-top:20px">
+          ▶ IR A MI PERFIL
+        </button>
+        <p style="font-family:var(--font-pixel);font-size:0.28rem;color:var(--muted);margin-top:10px">Redirigiendo automáticamente...</p>
+      </div>
+
+    </div><!-- /form-card -->
+
+    <p class="panel-foot">© 2025 EDULEARN · TODOS LOS DERECHOS RESERVADOS</p>
+  </section>
+
+</main>
+
+<!-- TOAST -->
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script type="module" src="cuenta.js"></script>
+</body>
+</html>
