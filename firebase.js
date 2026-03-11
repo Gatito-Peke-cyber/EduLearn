@@ -1,7 +1,9 @@
-// =====================================================
-// EduLearn — firebase.js
-// Versión Firebase: 12.10.0
-// =====================================================
+/* =====================================================
+   EduLearn — firebase.js  v4.0
+   NOTA: Si hay errores de importación, cambia la
+   versión "12.10.0" a "11.6.0" en TODOS los archivos
+   (firebase.js, auth.js, database.js)
+   ===================================================== */
 
 import { initializeApp }  from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
 import { getAuth }        from "https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js";
@@ -18,8 +20,13 @@ const firebaseConfig = {
   measurementId:     "G-LCQPJGQS8K"
 };
 
-const app       = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+const app = initializeApp(firebaseConfig);
+
+// Analytics solo en producción (evita errores en localhost)
+let analytics = null;
+try {
+  analytics = getAnalytics(app);
+} catch (_) {}
 
 export const auth = getAuth(app);
 export const db   = getFirestore(app);

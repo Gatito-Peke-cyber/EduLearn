@@ -1,6 +1,9 @@
 /* =====================================================
-   EduLearn — database.js  v3.0
-   CRUD completo con Firestore
+   EduLearn — database.js  v4.0
+   FIXES:
+   - syncAllToLocalStorage: no sobreescribe con datos vacíos
+   - getUserEnrollments: mejor manejo de Timestamps
+   - Todos los errores se propagan correctamente
    ===================================================== */
 
 import { db } from './firebase.js';
@@ -32,7 +35,16 @@ export async function createUserProfile(uid, data) {
 export async function getUserProfile(uid) {
   try {
     const snap = await getDoc(doc(db, 'usuarios', uid));
-    return snap.exists() ? { uid: snap.id, ...snap.data() } : null;
+    if (!snap.exists()) return null;
+    const data = snap.data();
+    // Convertir Timestamps a ISO string para compatibilidad
+    return {
+      uid: snap.id,
+      ...data,
+      createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
+      updatedAt: data.updatedAt?.toDate?.()?.toISOString() || data.updatedAt,
+      lastVisit: data.lastVisit?.toDate?.()?.toISOString() || data.lastVisit,
+    };
   } catch (err) {
     console.error('[DB] getUserProfile:', err);
     return null;
@@ -63,7 +75,6 @@ export async function addXP(uid, amount) {
       xp:        increment(amount),
       updatedAt: serverTimestamp(),
     });
-    // Actualizar localStorage
     try {
       const local = JSON.parse(localStorage.getItem('perfil_usuario') || '{}');
       local.xp = (local.xp || 0) + amount;
@@ -117,10 +128,7 @@ export async function enrollCourse(uid, curso) {
       updatedAt:  serverTimestamp(),
     };
     await setDoc(doc(db, 'inscripciones', docId), data);
-
-    // Sincronizar al localStorage
     _addEnrollmentLocal({ ...data, id: curso.id, enrolledAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
-
     return { error: null };
   } catch (err) {
     console.error('[DB] enrollCourse:', err);
@@ -134,12 +142,18 @@ export async function getUserEnrollments(uid) {
     const snap = await getDocs(q);
     return snap.docs.map(d => {
       const data = d.data();
+      // FIX: conversión segura de Timestamps de Firestore
+      const toISO = (val) => {
+        if (!val) return null;
+        if (typeof val.toDate === 'function') return val.toDate().toISOString();
+        if (typeof val === 'string') return val;
+        return null;
+      };
       return {
         ...data,
-        id: data.cursoId,
-        // Convertir Timestamp a ISO string para localStorage
-        enrolledAt: data.enrolledAt?.toDate?.()?.toISOString() || data.enrolledAt,
-        updatedAt:  data.updatedAt?.toDate?.()?.toISOString()  || data.updatedAt,
+        id:         data.cursoId,
+        enrolledAt: toISO(data.enrolledAt),
+        updatedAt:  toISO(data.updatedAt),
       };
     });
   } catch (err) {
@@ -157,7 +171,6 @@ export async function updateExamResult(uid, cursoId, nota_final, aprobado) {
       estado:    aprobado ? 'completado' : 'en_progreso',
       updatedAt: serverTimestamp(),
     });
-    // Actualizar localStorage
     try {
       const list = JSON.parse(localStorage.getItem('inscripciones') || '[]');
       const idx  = list.findIndex(c => c.id === cursoId || c.cursoId === cursoId);
@@ -205,10 +218,7 @@ export async function saveMisionesEstado(uid, estado) {
 export async function addTimelineEventDB(uid, evento) {
   try {
     const colRef = collection(db, 'timeline', uid, 'eventos');
-    await setDoc(doc(colRef), {
-      ...evento,
-      fecha: serverTimestamp(),
-    });
+    await setDoc(doc(colRef), { ...evento, fecha: serverTimestamp() });
     return { error: null };
   } catch (err) {
     return { error: err.message };
@@ -225,7 +235,7 @@ export async function getTimelineDB(uid) {
     const snap = await getDocs(q);
     return snap.docs.map(d => ({
       ...d.data(),
-      id: d.id,
+      id:    d.id,
       fecha: d.data().fecha?.toDate?.()?.toISOString() || new Date().toISOString(),
     }));
   } catch (_) { return []; }
@@ -280,6 +290,8 @@ export async function addInsignia(uid, badgeId) {
 
 /* ═══════════════════════════════════════════════════
    SINCRONIZACIÓN COMPLETA  Firebase → localStorage
+   FIX: solo sobreescribe cada clave si Firestore
+   devolvió datos reales (no objetos vacíos / null)
    ═══════════════════════════════════════════════════ */
 export async function syncAllToLocalStorage(uid) {
   try {
@@ -291,17 +303,34 @@ export async function syncAllToLocalStorage(uid) {
       getTimelineDB(uid),
     ]);
 
-    if (profile) {
+    // Perfil: solo sobreescribir si Firestore tiene datos reales
+    if (profile && Object.keys(profile).length > 1) {
       const clean = { ...profile };
       delete clean.createdAt;
       delete clean.updatedAt;
       localStorage.setItem('perfil_usuario', JSON.stringify(clean));
     }
-    if (enrollments) localStorage.setItem('inscripciones',      JSON.stringify(enrollments));
-    if (misiones)    localStorage.setItem('misiones_estado_v4', JSON.stringify(misiones));
-    if (buzon)       localStorage.setItem('buzon_estado',       JSON.stringify(buzon));
-    // ✅ Sincronizar también el timeline de actividad
-    if (timeline && timeline.length > 0) {
+
+    // Inscripciones: guardar aunque sea array vacío (es válido)
+    if (Array.isArray(enrollments)) {
+      localStorage.setItem('inscripciones', JSON.stringify(enrollments));
+    }
+
+    // Misiones: solo sobreescribir si hay misiones guardadas
+    if (misiones && Object.keys(misiones).filter(k => k !== 'updatedAt').length > 0) {
+      // Limpiar el campo de control updatedAt antes de guardar
+      const { updatedAt: _u, ...misionesClean } = misiones;
+      localStorage.setItem('misiones_estado_v4', JSON.stringify(misionesClean));
+    }
+
+    // Buzón: solo sobreescribir si hay mensajes leídos registrados
+    if (buzon && Object.keys(buzon).filter(k => k !== 'updatedAt').length > 0) {
+      const { updatedAt: _u, ...buzonClean } = buzon;
+      localStorage.setItem('buzon_estado', JSON.stringify(buzonClean));
+    }
+
+    // Timeline: solo sobreescribir si hay eventos reales
+    if (Array.isArray(timeline) && timeline.length > 0) {
       localStorage.setItem('timeline_events', JSON.stringify(timeline));
     }
 

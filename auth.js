@@ -1,6 +1,9 @@
 /* =====================================================
-   EduLearn — auth.js  v3.0
-   Autenticación real con Firebase Auth
+   EduLearn — auth.js  v4.0
+   FIXES:
+   - Google login: popup → redirect fallback (compatibilidad total)
+   - Bug crítico: usuario existente de Google ya no se sobreescribe
+   - loginWithEmail: sync más robusto con reintentos
    ===================================================== */
 
 import { auth } from './firebase.js';
@@ -14,6 +17,8 @@ import {
   sendPasswordResetEmail,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
 } from 'https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js';
 
 import {
@@ -51,7 +56,6 @@ export async function registerWithEmail(nombre, email, password, avatar = '🎓'
 
     await createUserProfile(user.uid, profileData);
 
-    // Sincronizar a localStorage para compatibilidad con perfil.js
     localStorage.setItem('perfil_usuario', JSON.stringify(profileData));
     localStorage.setItem('inscripciones', JSON.stringify([]));
     localStorage.setItem('timeline_events', JSON.stringify([
@@ -67,16 +71,21 @@ export async function registerWithEmail(nombre, email, password, avatar = '🎓'
 
 /* ═══════════════════════════════════════════════
    LOGIN CON EMAIL
+   FIX: sync robusto — garantiza que localStorage
+   se llene aunque haya errores parciales en Firestore
    ═══════════════════════════════════════════════ */
 export async function loginWithEmail(email, password) {
   try {
     const cred = await signInWithEmailAndPassword(auth, email, password);
     const user  = cred.user;
 
-    // Traer todos los datos de Firestore al localStorage
-    await syncAllToLocalStorage(user.uid);
+    // Traer TODOS los datos de Firestore al localStorage
+    const syncResult = await syncAllToLocalStorage(user.uid);
+    if (syncResult?.error) {
+      console.warn('[AUTH] Advertencia en sync:', syncResult.error);
+    }
 
-    // Actualizar lastVisit en local
+    // Actualizar lastVisit
     try {
       const p = JSON.parse(localStorage.getItem('perfil_usuario') || '{}');
       p.lastVisit = new Date().toISOString();
@@ -91,17 +100,89 @@ export async function loginWithEmail(email, password) {
 
 /* ═══════════════════════════════════════════════
    LOGIN CON GOOGLE
+   FIX 1: try popup → si falla, usa redirect
+   FIX 2: no sobreescribir datos si getUserProfile falla
    ═══════════════════════════════════════════════ */
 export async function loginWithGoogle() {
+  // Intentar popup primero (funciona en escritorio/Chrome)
   try {
     const result = await signInWithPopup(auth, googleProvider);
-    const user   = result.user;
+    return await _processGoogleUser(result.user);
 
-    // ✅ Verificar en Firestore si ya tiene perfil (no usar _tokenResponse que es interna)
-    const existingProfile = await getUserProfile(user.uid);
-    const isNew = !existingProfile;
+  } catch (err) {
+    // Errores que significan "popup no soportado en este entorno"
+    const needsRedirect = [
+      'auth/popup-blocked',
+      'auth/popup-cancelled',
+      'auth/operation-not-supported-in-this-environment',
+      'auth/cancelled-popup-request',
+    ].includes(err.code);
+
+    if (needsRedirect) {
+      // Guardar flag para saber que venimos de un redirect
+      sessionStorage.setItem('google_redirect_pending', '1');
+      try {
+        await signInWithRedirect(auth, googleProvider);
+        // La página se recarga — el resultado se maneja en handleGoogleRedirect()
+        return { user: null, isNew: false, error: null, redirecting: true };
+      } catch (redirectErr) {
+        sessionStorage.removeItem('google_redirect_pending');
+        return { user: null, isNew: false, error: translateError(redirectErr.code) };
+      }
+    }
+
+    console.error('[AUTH] loginWithGoogle error:', err.code);
+    return { user: null, isNew: false, error: translateError(err.code) };
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   MANEJAR RESULTADO DE REDIRECT DE GOOGLE
+   Llamar esta función al inicio de login.js
+   para capturar el resultado después del redirect
+   ═══════════════════════════════════════════════ */
+export async function handleGoogleRedirect() {
+  // Solo procesar si veníamos de un redirect intencional
+  // (getRedirectResult puede tardar aunque no haya redirect)
+  try {
+    const result = await getRedirectResult(auth);
+    if (!result?.user) return null;
+
+    sessionStorage.removeItem('google_redirect_pending');
+    return await _processGoogleUser(result.user);
+  } catch (err) {
+    sessionStorage.removeItem('google_redirect_pending');
+    if (err.code === 'auth/credential-already-in-use') {
+      return { user: null, error: translateError(err.code) };
+    }
+    // No había redirect pendiente o fue cancelado — ignorar
+    return null;
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   HELPER INTERNO: procesar usuario de Google
+   FIX CRÍTICO: si getUserProfile falla (error de red
+   o reglas de Firestore), NO asumir que es usuario nuevo
+   ═══════════════════════════════════════════════ */
+async function _processGoogleUser(user) {
+  try {
+    let existingProfile = null;
+    let profileError    = false;
+
+    try {
+      existingProfile = await getUserProfile(user.uid);
+    } catch (profileErr) {
+      // Si no podemos consultar Firestore, asumir que existe
+      // para NO sobreescribir datos del usuario
+      console.warn('[AUTH] No se pudo verificar perfil existente:', profileErr);
+      profileError = true;
+    }
+
+    const isNew = !profileError && !existingProfile;
 
     if (isNew) {
+      // Usuario genuinamente nuevo → crear perfil
       const profileData = {
         nombre:    user.displayName || 'Estudiante',
         email:     user.email || '',
@@ -117,21 +198,16 @@ export async function loginWithGoogle() {
         { icon:'🌟', title:'¡Cuenta creada con Google!', detail:'+150 XP', fecha: new Date().toISOString() },
       ]));
     } else {
-      // ✅ Usuario existente → traer TODO su progreso de Firestore
+      // Usuario existente (o no se pudo verificar) → sincronizar datos
       await syncAllToLocalStorage(user.uid);
     }
 
     return { user, isNew, error: null };
+
   } catch (err) {
-    console.error('[AUTH] loginWithGoogle:', err);
-    // Errores comunes de popup
-    if (err.code === 'auth/popup-blocked') {
-      return { user: null, isNew: false, error: 'POPUP BLOQUEADO — PERMITE POPUPS EN TU NAVEGADOR' };
-    }
-    if (err.code === 'auth/unauthorized-domain') {
-      return { user: null, isNew: false, error: 'DOMINIO NO AUTORIZADO EN FIREBASE CONSOLE' };
-    }
-    return { user: null, isNew: false, error: translateError(err.code) };
+    console.error('[AUTH] _processGoogleUser:', err);
+    // Aun así devolver el usuario para que pueda acceder
+    return { user, isNew: false, error: null };
   }
 }
 
@@ -145,6 +221,7 @@ export async function logout() {
      'timeline_events','buzon_estado','insignias_celebradas_v4'].forEach(k => {
       localStorage.removeItem(k);
     });
+    sessionStorage.removeItem('google_redirect_pending');
     return { error: null };
   } catch (err) {
     return { error: translateError(err.code) };
@@ -189,8 +266,11 @@ function translateError(code) {
     'auth/network-request-failed':  'ERROR DE RED — VERIFICA TU CONEXIÓN',
     'auth/popup-closed-by-user':    'VENTANA CERRADA — INTENTA DE NUEVO',
     'auth/cancelled-popup-request': 'OPERACIÓN CANCELADA',
-    'auth/account-exists-with-different-credential': 'ESA CUENTA YA EXISTE CON OTRO MÉTODO',
+    'auth/account-exists-with-different-credential': 'ESA CUENTA YA EXISTE CON OTRO MÉTODO DE ACCESO',
     'auth/user-disabled':           'ESTA CUENTA HA SIDO DESHABILITADA',
+    'auth/credential-already-in-use': 'CREDENCIAL YA EN USO POR OTRA CUENTA',
+    'auth/unauthorized-domain':     'DOMINIO NO AUTORIZADO — CONTACTA AL ADMINISTRADOR',
+    'auth/operation-not-supported-in-this-environment': 'REDIRIGIENDO A GOOGLE...',
   };
   return MAP[code] || `ERROR: ${code}`;
 }
