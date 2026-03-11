@@ -1,11 +1,12 @@
 /* =====================================================
-   EduLearn — login.js  v3.0
-   Login real con Firebase Auth
-   IMPORTANTE: en login.html cambia el script tag a:
-   <script type="module" src="login.js"></script>
+   EduLearn — login.js  v4.0
+   FIX: manejo de Google redirect para Netlify/móvil
+   - Detecta resultado de signInWithRedirect al cargar
+   - Muestra spinner mientras procesa el redirect
+   IMPORTANTE: <script type="module" src="login.js"></script>
    ===================================================== */
 
-import { loginWithEmail, loginWithGoogle, resetPassword } from './auth.js';
+import { loginWithEmail, loginWithGoogle, handleGoogleRedirect, resetPassword } from './auth.js';
 
 /* ── HELPERS ─────────────────────────────────────── */
 const $ = s => document.querySelector(s);
@@ -31,7 +32,7 @@ function setFieldState(wrapId, state, icon) {
   if (s) s.textContent = icon || '';
 }
 
-function validateEmail(v) { return /^\S+@\S+\.\S+$/.test(v.trim()); }
+function validateEmail(v)    { return /^\S+@\S+\.\S+$/.test(v.trim()); }
 function validatePassword(v) { return v.length >= 6; }
 
 /* ── STARS ───────────────────────────────────────── */
@@ -86,10 +87,36 @@ function hideLoader() {
 }
 
 /* ── INIT ────────────────────────────────────────── */
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   hideLoader();
   initStars();
 
+  /* ═══════════════════════════════════════════════════
+     PASO 1: Detectar si volvemos de un Google redirect
+     Esto ocurre en Netlify/móvil donde popup no funciona
+     ═══════════════════════════════════════════════════ */
+  const pendingRedirect = sessionStorage.getItem('google_redirect_pending');
+  if (pendingRedirect) {
+    // Mostrar spinner mientras resolvemos el redirect
+    toast('⟳ PROCESANDO INICIO CON GOOGLE...', 'var(--cyan)');
+    try {
+      const result = await handleGoogleRedirect();
+      if (result?.user) {
+        toast('✓ SESIÓN INICIADA CON GOOGLE', 'var(--green)');
+        setTimeout(() => { window.location.href = 'perfil.html'; }, 700);
+        return; // Detener el resto del init hasta la redirección
+      } else if (result?.error) {
+        toast(`❌ ${result.error}`, 'var(--red)');
+      }
+      // Si result es null: no había redirect pendiente real, continuar normal
+    } catch (_) {
+      // Ignorar — continuar carga normal del formulario
+    }
+  }
+
+  /* ═══════════════════════════════════════════════════
+     PASO 2: Inicializar formulario normal
+     ═══════════════════════════════════════════════════ */
   const form       = $('#loginForm');
   const emailInput = $('#email');
   const passInput  = $('#password');
@@ -144,11 +171,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (passErr) passErr.textContent = ok ? '' : 'MÍNIMO 6 CARACTERES';
   });
 
-  /* ── Submit ── */
+  /* ── Submit email/password ── */
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    // Limpiar errores
     if (emailErr) emailErr.textContent = '';
     if (passErr)  passErr.textContent  = '';
     setFieldState('email-wrap', '');
@@ -167,12 +193,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (!ok) { toast('⚠ CORRIGE LOS ERRORES', 'var(--red)'); return; }
 
-    // Loading state
     submitBtn.disabled   = true;
     if (submitText) submitText.hidden = true;
     if (submitLoad) submitLoad.hidden = false;
 
-    // Firebase login
     const { user, error } = await loginWithEmail(
       emailInput.value.trim(),
       passInput.value
@@ -188,7 +212,6 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // Guardar email si "recordarme" activo
     if (rememberCb?.checked) {
       localStorage.setItem('remember_email', emailInput.value.trim());
     } else {
@@ -198,21 +221,47 @@ document.addEventListener('DOMContentLoaded', () => {
     setFieldState('email-wrap', 'success', '✓');
     setFieldState('pass-wrap',  'success', '✓');
     toast('✓ SESIÓN INICIADA — REDIRIGIENDO...', 'var(--green)');
-
     setTimeout(() => { window.location.href = 'perfil.html'; }, 700);
   });
 
-  /* ── Google ── */
+  /* ── Google login ── */
   document.querySelectorAll('.btn-social').forEach(btn => {
     btn.addEventListener('click', async () => {
-      const isGoogle = btn.querySelector('.fa-google') || btn.textContent.includes('GOOGLE');
-      if (!isGoogle) { toast('⚡ PRÓXIMAMENTE DISPONIBLE', 'var(--yellow)'); return; }
+      const isGoogle = btn.querySelector('.fa-google') ||
+                       btn.textContent.toUpperCase().includes('GOOGLE');
+      if (!isGoogle) {
+        toast('⚡ PRÓXIMAMENTE DISPONIBLE', 'var(--yellow)');
+        return;
+      }
+
+      // Deshabilitar botón y mostrar spinner
+      btn.disabled = true;
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '<span>⟳ CONECTANDO...</span>';
 
       toast('⟳ CONECTANDO CON GOOGLE...', 'var(--cyan)');
-      const { user, error } = await loginWithGoogle();
-      if (error) { toast(`❌ ${error}`, 'var(--red)'); return; }
-      toast('✓ SESIÓN INICIADA', 'var(--green)');
-      setTimeout(() => { window.location.href = 'perfil.html'; }, 700);
+      const result = await loginWithGoogle();
+
+      if (result?.redirecting) {
+        // La página se va a recargar sola — no hacemos nada
+        // El toast ya fue mostrado y el flag sessionStorage ya fue guardado
+        toast('⟳ REDIRIGIENDO A GOOGLE...', 'var(--cyan)');
+        return;
+      }
+
+      // Restaurar botón si no hubo redirect
+      btn.disabled  = false;
+      btn.innerHTML = originalText;
+
+      if (result?.error) {
+        toast(`❌ ${result.error}`, 'var(--red)');
+        return;
+      }
+
+      if (result?.user) {
+        toast('✓ SESIÓN INICIADA', 'var(--green)');
+        setTimeout(() => { window.location.href = 'perfil.html'; }, 700);
+      }
     });
   });
 
