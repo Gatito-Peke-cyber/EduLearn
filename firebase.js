@@ -1,21 +1,26 @@
-// Import the functions you need from the SDKs you need
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-analytics.js";
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
+// =====================================================
+// EduLearn — firebase.js
+// Versión Firebase: 12.10.0
+// =====================================================
 
-  // Your web app's Firebase configuration
-  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-  const firebaseConfig = {
-    apiKey: "AIzaSyAWJqUatXBVia4aGKLYcYVi67dr3zoikqI",
-    authDomain: "edulearn-d7ca8.firebaseapp.com",
-    projectId: "edulearn-d7ca8",
-    storageBucket: "edulearn-d7ca8.firebasestorage.app",
-    messagingSenderId: "976260050565",
-    appId: "1:976260050565:web:c6b9a6f8268f348d6303ec",
-    measurementId: "G-LCQPJGQS8K"
-  };
+import { initializeApp }  from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
+import { getAuth }        from "https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js";
+import { getFirestore }   from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
+import { getAnalytics }   from "https://www.gstatic.com/firebasejs/12.10.0/firebase-analytics.js";
 
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
+const firebaseConfig = {
+  apiKey:            "AIzaSyAWJqUatXBVia4aGKLYcYVi67dr3zoikqI",
+  authDomain:        "edulearn-d7ca8.firebaseapp.com",
+  projectId:         "edulearn-d7ca8",
+  storageBucket:     "edulearn-d7ca8.firebasestorage.app",
+  messagingSenderId: "976260050565",
+  appId:             "1:976260050565:web:c6b9a6f8268f348d6303ec",
+  measurementId:     "G-LCQPJGQS8K"
+};
+
+const app       = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+
+export const auth = getAuth(app);
+export const db   = getFirestore(app);
+export default app;

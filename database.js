@@ -9,7 +9,7 @@ import {
   collection, query, where, getDocs,
   orderBy, limit, serverTimestamp,
   increment, arrayUnion,
-} from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+} from 'https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js';
 
 /* ═══════════════════════════════════════════════════
    USUARIOS  — colección "usuarios"
