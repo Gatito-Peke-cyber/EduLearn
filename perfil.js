@@ -1112,7 +1112,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
   onAuthChange(async (user) => {
     if(!user) {
-      /* Sin sesión → redirigir al login */
       window.location.href = 'index.html';
       return;
     }
@@ -1122,7 +1121,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
     if(firstLoad) {
       firstLoad = false;
 
-      /* Primera carga: sincronizar datos de Firebase → localStorage */
       showSyncIndicator('⟳ CARGANDO TU PROGRESO...');
       try {
         await syncAllToLocalStorage(user.uid);
@@ -1131,14 +1129,27 @@ document.addEventListener('DOMContentLoaded', ()=>{
       } catch(err) {
         hideSyncIndicator();
         console.warn('[Perfil] Error de sincronización:', err);
-        /* Continúa con datos locales si hay error de red */
+        // Continúa con datos locales si hay error de red
       }
 
-      /* Renderizar todo una vez que los datos están listos */
+      // Renderizar DESPUÉS de que syncAllToLocalStorage haya
+      // escrito los datos de Firebase en localStorage
       renderHeader();
       renderResumen();
       renderBuzon();
       recordVisit();
+
+      // Verificar la tab activa y renderizarla también
+      const activeTab = document.querySelector('.tab.active');
+      if(activeTab) {
+        switch(activeTab.dataset.tab){
+          case 'insignias':       renderBadges();          break;
+          case 'misiones':        renderMissions();        break;
+          case 'actividad':       renderTimeline();        break;
+          case 'cursos':          renderInventory();       break;
+          case 'calificaciones':  renderCalificaciones();  break;
+        }
+      }
     }
   });
 });

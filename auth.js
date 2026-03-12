@@ -79,13 +79,20 @@ export async function loginWithEmail(email, password) {
     const cred = await signInWithEmailAndPassword(auth, email, password);
     const user  = cred.user;
 
-    // Traer TODOS los datos de Firestore al localStorage
-    const syncResult = await syncAllToLocalStorage(user.uid);
-    if (syncResult?.error) {
-      console.warn('[AUTH] Advertencia en sync:', syncResult.error);
+    // Primer intento de sync
+    let syncResult = await syncAllToLocalStorage(user.uid);
+
+    // Si falló, reintentar una vez (puede ser problema de red momentáneo)
+    if(syncResult?.error) {
+      console.warn('[AUTH] Reintentando sync...');
+      await new Promise(r => setTimeout(r, 1000));
+      syncResult = await syncAllToLocalStorage(user.uid);
     }
 
-    // Actualizar lastVisit
+    if(syncResult?.error) {
+      console.warn('[AUTH] Sync con advertencia:', syncResult.error);
+    }
+
     try {
       const p = JSON.parse(localStorage.getItem('perfil_usuario') || '{}');
       p.lastVisit = new Date().toISOString();

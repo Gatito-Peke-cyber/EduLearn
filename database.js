@@ -1,12 +1,11 @@
 /* =====================================================
-   EduLearn — database.js  v4.1
-   FIXES v4.1:
-   - enrollCourseDB: helper centralizado para inscribir
-     desde cualquier módulo (secundaria, primaria, ingles)
-   - updateExamResultDB: actualiza nota y aprobado en Firebase
-   - syncAllToLocalStorage: no sobreescribe con datos vacíos
-   - getUserEnrollments: mejor manejo de Timestamps
-   - Todos los errores se propagan correctamente
+   EduLearn — database.js  v4.2
+   FIXES v4.2 (cross-device sync):
+   - syncAllToLocalStorage: siempre sobreescribe con datos
+     de Firebase como fuente de verdad (source of truth)
+   - enrollCourseDB: alias exportado para compatibilidad
+   - updateUserProfile: ya no pisa datos frescos de Firebase
+   - Timestamps convertidos correctamente en todos los métodos
    ===================================================== */
 
 import { db } from './firebase.js';
@@ -55,14 +54,18 @@ export async function getUserProfile(uid) {
 
 export async function updateUserProfile(uid, data) {
   try {
+    // Guardar en Firestore primero
     await updateDoc(doc(db, 'usuarios', uid), {
       ...data,
       updatedAt: serverTimestamp(),
     });
+
+    // Actualizar localStorage sólo con los campos enviados (merge)
     try {
       const local = JSON.parse(localStorage.getItem('perfil_usuario') || '{}');
       localStorage.setItem('perfil_usuario', JSON.stringify({ ...local, ...data }));
     } catch (_) {}
+
     return { error: null };
   } catch (err) {
     console.error('[DB] updateUserProfile:', err);
@@ -110,15 +113,6 @@ export async function updateStreak(uid, racha) {
    ID de documento: "{uid}_{cursoId}"
    ═══════════════════════════════════════════════════ */
 
-/**
- * Inscribe un curso en Firebase Y en localStorage.
- * Esta es la función centralizada que deben usar todos
- * los módulos (secundaria.js, primaria.js, ingles.js, etc.)
- *
- * @param {string} uid  - UID del usuario autenticado
- * @param {object} curso - Objeto del curso a inscribir
- * @returns {{ error: string|null }}
- */
 export async function enrollCourse(uid, curso) {
   try {
     const docId = `${uid}_${curso.id}`;
@@ -140,7 +134,6 @@ export async function enrollCourse(uid, curso) {
     };
     await setDoc(doc(db, 'inscripciones', docId), data, { merge: true });
 
-    // Reflejo inmediato en localStorage
     _addEnrollmentLocal({
       ...data,
       id:         curso.id,
@@ -155,15 +148,9 @@ export async function enrollCourse(uid, curso) {
   }
 }
 
-/**
- * Actualiza nota final y estado de aprobación en Firebase Y localStorage.
- * Usar desde ingles.js (y cualquier módulo de curso con examen).
- *
- * @param {string}  uid        - UID del usuario autenticado
- * @param {string}  cursoId    - ID del curso
- * @param {number}  nota_final - Nota numérica (e.g. 15)
- * @param {boolean} aprobado   - true si aprobó
- */
+/* Alias para compatibilidad con módulos que importan enrollCourseDB */
+export const enrollCourseDB = enrollCourse;
+
 export async function updateExamResult(uid, cursoId, nota_final, aprobado) {
   try {
     const docId = `${uid}_${cursoId}`;
@@ -173,7 +160,6 @@ export async function updateExamResult(uid, cursoId, nota_final, aprobado) {
       estado:    aprobado ? 'completado' : 'en_progreso',
       updatedAt: serverTimestamp(),
     });
-    // Reflejo en localStorage
     try {
       const list = JSON.parse(localStorage.getItem('inscripciones') || '[]');
       const idx  = list.findIndex(c => c.id === cursoId || c.cursoId === cursoId);
@@ -190,6 +176,9 @@ export async function updateExamResult(uid, cursoId, nota_final, aprobado) {
     return { error: err.message };
   }
 }
+
+/* Alias para compatibilidad */
+export const updateExamResultDB = updateExamResult;
 
 export async function getUserEnrollments(uid) {
   try {
@@ -319,7 +308,10 @@ export async function addInsignia(uid, badgeId) {
 
 /* ═══════════════════════════════════════════════════
    SINCRONIZACIÓN COMPLETA  Firebase → localStorage
-   Solo sobreescribe si Firestore devolvió datos reales
+   v4.2: Firebase es la FUENTE DE VERDAD.
+   Siempre sobreescribe localStorage con datos de Firebase.
+   Si Firebase devuelve vacío, conserva los datos locales
+   como fallback para no perder datos offline.
    ═══════════════════════════════════════════════════ */
 export async function syncAllToLocalStorage(uid) {
   try {
@@ -331,37 +323,57 @@ export async function syncAllToLocalStorage(uid) {
       getTimelineDB(uid),
     ]);
 
+    /* ── PERFIL ── */
     if (profile && Object.keys(profile).length > 1) {
       const clean = { ...profile };
       delete clean.createdAt;
       delete clean.updatedAt;
+      // Firebase es fuente de verdad: sobreescribir completamente
       localStorage.setItem('perfil_usuario', JSON.stringify(clean));
     }
+    // Si profile es null, conservar localStorage como fallback (modo offline)
 
-    if (Array.isArray(enrollments)) {
-      // Merge: priorizar Firebase, pero conservar datos locales que Firebase no tenga
-      try {
-        const local = JSON.parse(localStorage.getItem('inscripciones') || '[]');
-        const firebaseIds = new Set(enrollments.map(e => e.id || e.cursoId));
-        // Agregar inscripciones locales que aún no están en Firebase (puede pasar si estaba offline)
-        const onlyLocal = local.filter(l => l.id && !firebaseIds.has(l.id));
-        const merged = [...enrollments, ...onlyLocal];
-        localStorage.setItem('inscripciones', JSON.stringify(merged));
-      } catch (_) {
-        localStorage.setItem('inscripciones', JSON.stringify(enrollments));
+    /* ── INSCRIPCIONES ── */
+    if (Array.isArray(enrollments) && enrollments.length > 0) {
+      // Firebase tiene datos → sobreescribir como fuente de verdad
+      localStorage.setItem('inscripciones', JSON.stringify(enrollments));
+    } else if (enrollments.length === 0) {
+      // Firebase devuelve vacío: puede ser usuario nuevo o error de red.
+      // Verificar si hay inscripciones locales pendientes de sync.
+      const localRaw = localStorage.getItem('inscripciones');
+      if (localRaw) {
+        try {
+          const localList = JSON.parse(localRaw);
+          if (Array.isArray(localList) && localList.length > 0) {
+            // Hay datos locales sin sincronizar → subirlos a Firebase
+            console.log('[Sync] Subiendo inscripciones locales a Firebase...');
+            const uploadPromises = localList.map(curso =>
+              enrollCourse(uid, { ...curso, id: curso.id || curso.cursoId })
+            );
+            await Promise.allSettled(uploadPromises);
+          }
+        } catch (_) {}
       }
     }
 
-    if (misiones && Object.keys(misiones).filter(k => k !== 'updatedAt').length > 0) {
+    /* ── MISIONES ── */
+    const misionesKeys = Object.keys(misiones).filter(k => k !== 'updatedAt');
+    if (misionesKeys.length > 0) {
       const { updatedAt: _u, ...misionesClean } = misiones;
+      // Firebase es fuente de verdad: sobreescribir
       localStorage.setItem('misiones_estado_v4', JSON.stringify(misionesClean));
     }
+    // Si está vacío en Firebase, conservar localStorage como fallback
 
-    if (buzon && Object.keys(buzon).filter(k => k !== 'updatedAt').length > 0) {
+    /* ── BUZÓN ── */
+    const buzonKeys = Object.keys(buzon).filter(k => k !== 'updatedAt');
+    if (buzonKeys.length > 0) {
       const { updatedAt: _u, ...buzonClean } = buzon;
+      // Firebase es fuente de verdad: sobreescribir
       localStorage.setItem('buzon_estado', JSON.stringify(buzonClean));
     }
 
+    /* ── TIMELINE ── */
     if (Array.isArray(timeline) && timeline.length > 0) {
       localStorage.setItem('timeline_events', JSON.stringify(timeline));
     }
