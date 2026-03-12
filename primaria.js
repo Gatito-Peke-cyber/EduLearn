@@ -1,16 +1,13 @@
 /* =====================================================
    EduLearn — Primaria — JS v4.0 — Firebase Sync
-   NUEVO: Sincronización con Firebase Firestore
-   - Inscripciones guardadas en Firebase + localStorage
-   - XP sincronizado al perfil de Firebase
-   - Compatible con perfil.js y database.js v4.0
+   Firebase SDK: 12.10.0 (vía auth.js y database.js)
    ===================================================== */
 'use strict';
 
 import { onAuthChange } from './auth.js';
 import {
-  enrollCourse   as dbEnrollCourse,
-  addXP          as dbAddXP,
+  enrollCourse as dbEnrollCourse,
+  addXP        as dbAddXP,
 } from './database.js';
 
 /* ── UID del usuario activo ── */
@@ -34,24 +31,17 @@ function buildCountdown(targetIso) {
   const diff = new Date(targetIso).getTime() - Date.now();
   if (diff <= 0) return '00d 00h 00m 00s';
   const totalSec = Math.floor(diff / 1000);
-  const days  = Math.floor(totalSec / 86400);
-  const hours = Math.floor((totalSec % 86400) / 3600);
-  const mins  = Math.floor((totalSec % 3600) / 60);
-  const secs  = totalSec % 60;
   const pad = n => String(n).padStart(2, '0');
-  return `${pad(days)}d ${pad(hours)}h ${pad(mins)}m ${pad(secs)}s`;
+  return `${pad(Math.floor(totalSec/86400))}d ${pad(Math.floor((totalSec%86400)/3600))}h ${pad(Math.floor((totalSec%3600)/60))}m ${pad(totalSec%60)}s`;
 }
 
 function fmtDate(iso) {
   if (!iso) return '';
-  const d     = new Date(iso);
-  const day   = String(d.getDate()).padStart(2, '0');
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const year  = d.getFullYear();
-  return `${day}-${month}-${year}`;
+  const d = new Date(iso);
+  return `${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()}`;
 }
 
-/* ---- COURSES DATA (40 courses) ---- */
+/* ---- COURSES DATA ---- */
 const CURSOS_P = [
   // MATEMATICAS
   { id:'p01', nombre:'Números del 1 al 100', area:'matematicas', grado:'1er Grado', horas:10, xp:80,
@@ -222,7 +212,7 @@ const CURSOS_P = [
   { id:'p40', nombre:'Atletismo Escolar', area:'ef', grado:'5to Grado', horas:10, xp:80,
     desc:'Carreras, salto largo, lanzamiento de pelota y récords personales.', estrellas:4,
     temario:['Carrera de velocidad','Carrera de resistencia','Salto largo','Lanzamiento'],
-    img:'https://images.unsplash.com/photo-1552674605-db6ffd4facb5?w=400&q=80', link:'#' }
+    img:'https://images.unsplash.com/photo-1552674605-db6ffd4facb5?w=400&q=80', link:'#' },
 ];
 
 /* ---- TEMPORALES ---- */
@@ -231,32 +221,26 @@ const TEMPORALES_P = [
     id:'tp01', nombre:'Taller de Cuentos Mágicos', area:'lectura',
     desc:'¡Escribe tu propio cuento ilustrado en este taller especial de vacaciones!',
     horas:6, img:'https://images.unsplash.com/photo-1524578271613-d550eacf6090?w=400&q=80',
-    inicio: '2026-03-10T08:00:00',
-    fin:    '2026-03-22T23:59:59',
-    link:'#'
+    inicio:'2026-03-10T08:00:00', fin:'2026-03-22T23:59:59', link:'#'
   },
   {
     id:'tp02', nombre:'Maratón de Mates', area:'matematicas',
     desc:'Resuelve 50 retos matemáticos y gana la insignia del Genio de los Números.',
     horas:5, img:'https://images.unsplash.com/photo-1580582932707-520aed937b7b?w=400&q=80',
-    inicio: '2026-03-09T00:00:00',
-    fin:    '2026-03-13T23:59:59',
-    link:'#'
+    inicio:'2026-03-09T00:00:00', fin:'2026-03-13T23:59:59', link:'#'
   },
   {
     id:'tp03', nombre:'Science Fair Virtual', area:'ciencias',
     desc:'Presenta un experimento casero y compite con estudiantes de todo el país.',
     horas:8, img:'https://images.unsplash.com/photo-1532094349884-543559059db2?w=400&q=80',
-    inicio: '2026-02-20T00:00:00',
-    fin:    '2026-03-01T23:59:59',
-    link:'#'
-  }
+    inicio:'2026-02-20T00:00:00', fin:'2026-03-01T23:59:59', link:'#'
+  },
 ];
 
 /* ---- GRADO MAP ---- */
 const GRADO_MAP = {
-  '1': '1er Grado', '2': '2do Grado', '3': '3er Grado',
-  '4': '4to Grado', '5': '5to Grado', '6': '6to Grado'
+  '1':'1er Grado','2':'2do Grado','3':'3er Grado',
+  '4':'4to Grado','5':'5to Grado','6':'6to Grado'
 };
 
 /* ---- HELPERS ---- */
@@ -292,20 +276,14 @@ function getAreaLabel(a){
 }
 
 /* ---- STATE ---- */
-let state = {
-  search: '', area: '', grado: '', sort: 'relevancia',
-  page: 1, favoritosOnly: false
-};
+let state = { search:'', area:'', grado:'', sort:'relevancia', page:1, favoritosOnly:false };
 
-/* ===== FIREBASE HELPERS ===== */
-/**
- * Sincroniza inscripción con Firebase.
- */
+/* ===== FIREBASE SYNC HELPERS ===== */
 async function syncEnrollToFirebase(curso, tipo = 'permanente') {
   if (!currentUID) return;
   try {
     await dbEnrollCourse(currentUID, {
-      id:     String(curso.id),
+      id:    String(curso.id),
       nombre: curso.nombre,
       area:   curso.area  || '',
       tipo,
@@ -319,9 +297,6 @@ async function syncEnrollToFirebase(curso, tipo = 'permanente') {
   }
 }
 
-/**
- * Suma XP en Firebase.
- */
 async function syncXPToFirebase(amount) {
   if (!currentUID || amount <= 0) return;
   try {
@@ -342,14 +317,13 @@ function filteredCourses(){
   );
   if(state.area)  list = list.filter(c => c.area  === state.area);
   if(state.grado) list = list.filter(c => c.grado === (GRADO_MAP[state.grado] || state.grado));
-
   switch(state.sort) {
     case 'nombre-asc':  list.sort((a,b)=> a.nombre.localeCompare(b.nombre)); break;
     case 'nombre-desc': list.sort((a,b)=> b.nombre.localeCompare(a.nombre)); break;
-    case 'populares':   list.sort((a,b)=> b.estrellas - a.estrellas); break;
-    case 'duracion':    list.sort((a,b)=> a.horas - b.horas); break;
-    case 'nuevos':      list.sort((a,b)=> b.xp - a.xp); break;
-    default:            list.sort((a,b)=> b.xp - a.xp); break;
+    case 'populares':   list.sort((a,b)=> b.estrellas - a.estrellas);        break;
+    case 'duracion':    list.sort((a,b)=> a.horas - b.horas);                break;
+    case 'nuevos':      list.sort((a,b)=> b.xp - a.xp);                     break;
+    default:            list.sort((a,b)=> b.xp - a.xp);                     break;
   }
   return list;
 }
@@ -361,8 +335,7 @@ function renderGrid(){
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   if(state.page > pages) state.page = 1;
   const slice = list.slice((state.page-1)*PAGE_SIZE, state.page*PAGE_SIZE);
-
-  const grid = $('#coursesGrid');
+  const grid  = $('#coursesGrid');
   if(!grid) return;
 
   if(!slice.length){
@@ -377,7 +350,7 @@ function renderGrid(){
   const favs = getFavs();
   grid.innerHTML = slice.map(c => {
     const enrolled = isEnrolled(c.id);
-    const fav = favs.has(c.id);
+    const fav      = favs.has(c.id);
     return `
     <div class="card reveal" data-id="${c.id}">
       ${c.nuevo ? '<div class="ribbon">✦ NUEVO</div>' : ''}
@@ -421,16 +394,13 @@ function renderGrid(){
   });
 
   $$('[data-fav-id]').forEach(btn => btn.addEventListener('click', e => {
-    e.stopPropagation();
-    toggleFav(btn.dataset.favId);
+    e.stopPropagation(); toggleFav(btn.dataset.favId);
   }));
   $$('[data-view-id]').forEach(btn => btn.addEventListener('click', e => {
-    e.stopPropagation();
-    openModal(btn.dataset.viewId);
+    e.stopPropagation(); openModal(btn.dataset.viewId);
   }));
   $$('[data-enroll-id]').forEach(btn => btn.addEventListener('click', e => {
-    e.stopPropagation();
-    enrollCourse(btn.dataset.enrollId);
+    e.stopPropagation(); enrollCourse(btn.dataset.enrollId);
   }));
   $$('.card').forEach(card => card.addEventListener('click', ()=> openModal(card.dataset.id)));
 }
@@ -441,14 +411,11 @@ function renderPagination(current, total){
   const next = $('#nextPage');
   const list = $('#pageList');
   if(!prev) return;
-
   prev.disabled = current <= 1;
   next.disabled = current >= total;
-
   list.innerHTML = Array.from({length:total},(_,i)=>
     `<li><button class="${i+1===current?'active':''}" data-pg="${i+1}">${i+1}</button></li>`
   ).join('');
-
   list.querySelectorAll('button').forEach(b => b.addEventListener('click',()=>{
     state.page = +b.dataset.pg; renderGrid();
   }));
@@ -460,7 +427,6 @@ let tempIntervals = [];
 function renderTemporales(){
   tempIntervals.forEach(id => clearInterval(id));
   tempIntervals = [];
-
   const grid = $('#tempGrid');
   if(!grid) return;
 
@@ -471,24 +437,17 @@ function renderTemporales(){
     const finFmt    = fmtDate(t.fin);
 
     let badgeTxt, badgeCls;
-    if (status === 'expired')     { badgeTxt = '⛔ EXPIRADO'; badgeCls = 'badge-expired'; }
-    else if (status === 'active') { badgeTxt = '⚡ ACTIVO';   badgeCls = 'badge-active';  }
-    else                          { badgeTxt = '🔒 PRÓXIMO';  badgeCls = 'badge-soon';    }
+    if      (status === 'expired')     { badgeTxt = '⛔ EXPIRADO'; badgeCls = 'badge-expired'; }
+    else if (status === 'active')      { badgeTxt = '⚡ ACTIVO';   badgeCls = 'badge-active';  }
+    else                               { badgeTxt = '🔒 PRÓXIMO';  badgeCls = 'badge-soon';    }
 
     let actionBtn;
-    if (status === 'expired') {
-      actionBtn = `<span class="temp-status-badge badge-expired-txt">✗ EXPIRADO</span>`;
-    } else if (status === 'not_started') {
-      actionBtn = `<span class="temp-status-badge badge-soon-txt">🔒 AÚN NO ABRE</span>`;
-    } else if (enr) {
-      actionBtn = `<span class="temp-enrolled-badge">✓ INSCRITO</span>`;
-    } else {
-      actionBtn = `<button class="btn btn-enroll" data-enroll-temp="${t.id}" style="font-size:0.38rem;padding:6px 9px;">INSCRIBIRSE</button>`;
-    }
+    if      (status === 'expired')     actionBtn = `<span class="temp-status-badge badge-expired-txt">✗ EXPIRADO</span>`;
+    else if (status === 'not_started') actionBtn = `<span class="temp-status-badge badge-soon-txt">🔒 AÚN NO ABRE</span>`;
+    else if (enr)                      actionBtn = `<span class="temp-enrolled-badge">✓ INSCRITO</span>`;
+    else                               actionBtn = `<button class="btn btn-enroll" data-enroll-temp="${t.id}" style="font-size:0.38rem;padding:6px 9px;">INSCRIBIRSE</button>`;
 
-    let countdownLabel = '';
-    if (status === 'not_started') countdownLabel = 'ABRE EN:';
-    else if (status === 'active') countdownLabel = 'CIERRA EN:';
+    const countdownLabel = status === 'not_started' ? 'ABRE EN:' : status === 'active' ? 'CIERRA EN:' : '';
 
     return `
     <div class="temp-card ${status !== 'active' ? 'expired' : ''}" data-tid="${t.id}">
@@ -523,14 +482,11 @@ function renderTemporales(){
     if (!el) return;
     const status = getTempStatus(t);
     if (status === 'expired') return;
-
     const targetIso = status === 'not_started' ? t.inicio : t.fin;
     const ivId = setInterval(() => {
       const newStatus = getTempStatus(t);
       if (newStatus === 'expired' || (status === 'not_started' && newStatus === 'active')) {
-        clearInterval(ivId);
-        renderTemporales();
-        return;
+        clearInterval(ivId); renderTemporales(); return;
       }
       const cdEl = document.getElementById(`cd-${t.id}`);
       if (cdEl) cdEl.textContent = buildCountdown(targetIso);
@@ -548,19 +504,18 @@ function enrollCourse(id){
   const c = CURSOS_P.find(x=>x.id===id);
   if(!c || isEnrolled(id)) return;
   const list = getEnrolled();
-  const enrollment = {
+  list.push({
     tipo:'permanente', id:c.id, nombre:c.nombre, area:c.area, grado:c.grado,
     horas:c.horas, img:c.img, inscritoEl:new Date().toISOString(), estado:'en_progreso', link:c.link
-  };
-  list.push(enrollment);
+  });
   lsSet(ENROLL_KEY, list);
 
-  /* ── Sync Firebase (no bloqueante) ── */
   syncEnrollToFirebase(c, 'permanente');
-
   addXP(c.xp);
+
   toast(`🎮 ¡INSCRITO EN: ${c.nombre}! +${c.xp} XP`);
   renderGrid();
+
   const mBtn = $('#modal-enroll-btn');
   if(mBtn && mBtn.dataset.modalId === id){
     mBtn.textContent = '✓ INSCRITO'; mBtn.disabled = true; mBtn.classList.add('enrolled');
@@ -572,9 +527,9 @@ function enrollTemporal(tid){
   const t = TEMPORALES_P.find(x=>x.id===tid);
   if(!t) return;
   const st = getTempStatus(t);
-  if (st === 'expired')     { toast('⛔ ESTE TALLER YA EXPIRÓ', 'var(--red)'); return; }
+  if (st === 'expired')     { toast('⛔ ESTE TALLER YA EXPIRÓ', 'var(--red)');    return; }
   if (st === 'not_started') { toast('🔒 ESTE TALLER AÚN NO HA ABIERTO', 'var(--purple)'); return; }
-  if (isEnrolled(tid))      { toast('YA ESTABAS INSCRITO 😉', 'var(--yellow)'); return; }
+  if (isEnrolled(tid))      { toast('YA ESTABAS INSCRITO 😉', 'var(--yellow)');   return; }
 
   const list = getEnrolled();
   list.push({
@@ -583,10 +538,7 @@ function enrollTemporal(tid){
     inicio:t.inicio, fin:t.fin, link:t.link
   });
   lsSet(ENROLL_KEY, list);
-
-  /* ── Sync Firebase (no bloqueante) ── */
   syncEnrollToFirebase(t, 'temporal');
-
   addXP(50);
   toast(`🌟 ¡INSCRITO EN TALLER: ${t.nombre}! +50 XP`);
   renderTemporales();
@@ -596,7 +548,6 @@ function addXP(amount){
   const p = ls(PROFILE_KEY) || {};
   p.xp = (p.xp || 0) + amount;
   lsSet(PROFILE_KEY, p);
-  /* Sync XP a Firebase */
   syncXPToFirebase(amount);
 }
 
@@ -615,8 +566,8 @@ function toggleFav(id){
 function openModal(id){
   const c = CURSOS_P.find(x=>x.id===id);
   if(!c) return;
-  const enrolled = isEnrolled(id);
-  const modal = $('#courseModal');
+  const enrolled  = isEnrolled(id);
+  const modal     = $('#courseModal');
   const modalBody = modal?.querySelector('.modal-body');
   if(!modal || !modalBody) return;
 
@@ -683,10 +634,10 @@ function initControls(){
   const btnReset = $('#btnReset');
   const btnFavs  = $('#btnFavoritos');
 
-  if(search)   search.addEventListener('input',  ()=>{ state.search = search.value; state.page=1; renderGrid(); });
-  if(selArea)  selArea.addEventListener('change', ()=>{ state.area  = selArea.value; state.page=1; renderGrid(); });
-  if(selGrado) selGrado.addEventListener('change',()=>{ state.grado = selGrado.value; state.page=1; renderGrid(); });
-  if(selSort)  selSort.addEventListener('change', ()=>{ state.sort  = selSort.value; state.page=1; renderGrid(); });
+  if(search)   search.addEventListener('input',   ()=>{ state.search = search.value; state.page=1; renderGrid(); });
+  if(selArea)  selArea.addEventListener('change',  ()=>{ state.area  = selArea.value; state.page=1; renderGrid(); });
+  if(selGrado) selGrado.addEventListener('change', ()=>{ state.grado = selGrado.value; state.page=1; renderGrid(); });
+  if(selSort)  selSort.addEventListener('change',  ()=>{ state.sort  = selSort.value; state.page=1; renderGrid(); });
 
   if(btnFavs) btnFavs.addEventListener('click', ()=>{
     state.favoritosOnly = !state.favoritosOnly;
@@ -720,15 +671,12 @@ function initControls(){
 function initNav(){
   const ham  = $('.hamburger');
   const nav  = $('.nav');
-  if(ham && nav){
-    ham.addEventListener('click', ()=> nav.classList.toggle('open'));
-  }
+  if(ham && nav) ham.addEventListener('click', ()=> nav.classList.toggle('open'));
   const modal    = $('#courseModal');
   const closeBtn = modal?.querySelector('.modal-close');
   if(closeBtn) closeBtn.addEventListener('click', closeModal);
   if(modal)    modal.addEventListener('click', e => { if(e.target === modal) closeModal(); });
   document.addEventListener('keydown', e => { if(e.key === 'Escape') closeModal(); });
-
   $$('a[href^="#"]').forEach(a => a.addEventListener('click', e=>{
     const target = document.getElementById(a.getAttribute('href').slice(1));
     if(target){ e.preventDefault(); target.scrollIntoView({behavior:'smooth'}); nav?.classList.remove('open'); }
@@ -763,7 +711,7 @@ function hideLoader(){
   }, 80);
 }
 
-/* ---- FLOATING EMOJIS ---- */
+/* ---- FLOATING EMOJIS & STARS ---- */
 function generateEmojis(){
   const container = $('#floatingEmojis');
   if(!container) return;
@@ -779,7 +727,6 @@ function generateEmojis(){
   }
 }
 
-/* ---- PIXEL STARS ---- */
 function generateStars(){
   const container = $('#floatingEmojis');
   if(!container) return;
@@ -788,20 +735,16 @@ function generateStars(){
     const s = document.createElement('span');
     const size = Math.random()*2+1;
     s.style.cssText = `
-      position:absolute;
-      left:${Math.random()*100}%;
-      top:${Math.random()*100}%;
-      width:${size}px; height:${size}px;
-      background:${colors[Math.floor(Math.random()*colors.length)]};
+      position:absolute;left:${Math.random()*100}%;top:${Math.random()*100}%;
+      width:${size}px;height:${size}px;background:${colors[Math.floor(Math.random()*colors.length)]};
       opacity:${Math.random()*0.35+0.05};
       animation:blink ${Math.random()*3+2}s step-end infinite;
-      animation-delay:${Math.random()*3}s;
-      pointer-events:none;`;
+      animation-delay:${Math.random()*3}s;pointer-events:none;`;
     container.appendChild(s);
   }
 }
 
-/* ---- REVEAL ON SCROLL ---- */
+/* ---- REVEAL ---- */
 function initReveal(){
   const obs = new IntersectionObserver((entries)=>{
     entries.forEach(e=>{ if(e.isIntersecting) e.target.classList.add('visible'); });
@@ -822,7 +765,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   initReveal();
 });
 
-/* ===== AUTH LISTENER — establece currentUID ===== */
+/* ===== AUTH LISTENER ===== */
 onAuthChange((user) => {
   currentUID = user ? user.uid : null;
 });

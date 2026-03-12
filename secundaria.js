@@ -1,9 +1,6 @@
 /* =====================================================
    EduLearn — Secundaria JS v7.0 — Firebase Sync
-   NUEVO: Sincronización con Firebase Firestore
-   - Inscripciones guardadas en Firebase + localStorage
-   - Notas de exámenes sincronizadas con el perfil
-   - Compatible con perfil.js y database.js v4.0
+   Firebase SDK: 12.10.0 (vía auth.js y database.js)
    ===================================================== */
 'use strict';
 
@@ -14,7 +11,7 @@ import {
   addXP          as dbAddXP,
 } from './database.js';
 
-/* ── UID del usuario activo (se asigna tras auth) ── */
+/* ── UID del usuario activo ── */
 let currentUID = null;
 
 /* ===== LOADER ===== */
@@ -24,7 +21,13 @@ window.addEventListener("load", () => {
   const t = setInterval(() => {
     pct = Math.min(100, pct + 20);
     if (ld) ld.style.width = pct + "%";
-    if (pct >= 100) { clearInterval(t); setTimeout(() => { document.getElementById("loader").style.display = "none"; }, 200); }
+    if (pct >= 100) {
+      clearInterval(t);
+      setTimeout(() => {
+        const loader = document.getElementById("loader");
+        if (loader) loader.style.display = "none";
+      }, 200);
+    }
   }, 80);
 });
 
@@ -44,7 +47,7 @@ createStars();
 
 /* ===== NAV BURGER ===== */
 const burger = document.getElementById("burger");
-const nav = document.getElementById("mainNav");
+const nav    = document.getElementById("mainNav");
 if (burger && nav) {
   burger.addEventListener("click", () => {
     const e = burger.getAttribute("aria-expanded") === "true";
@@ -52,7 +55,8 @@ if (burger && nav) {
     nav.classList.toggle("open");
   });
   nav.querySelectorAll("a").forEach(a => a.addEventListener("click", () => {
-    burger.setAttribute("aria-expanded","false"); nav.classList.remove("open");
+    burger.setAttribute("aria-expanded","false");
+    nav.classList.remove("open");
   }));
 }
 
@@ -77,25 +81,22 @@ function showToast(msg, type = "ok") {
   const colors = { ok: "#39FF14", warn: "#FFE000", bad: "#FF3030" };
   toastEl.textContent = msg;
   toastEl.style.borderColor = colors[type] || colors.ok;
-  toastEl.style.color = colors[type] || colors.ok;
+  toastEl.style.color       = colors[type] || colors.ok;
   toastEl.classList.add("show");
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => toastEl.classList.remove("show"), 2800);
 }
 
-/* ===== FORMAT DATE: DD-MM-YYYY ===== */
+/* ===== FORMAT DATE ===== */
 function fmtDate(iso) {
   if (!iso) return '';
-  const d     = new Date(iso);
-  const day   = String(d.getDate()).padStart(2, '0');
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const year  = d.getFullYear();
-  return `${day}-${month}-${year}`;
+  const d = new Date(iso);
+  return `${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()}`;
 }
 
 /* ===== COUNTDOWN HELPERS ===== */
 function getTempStatus(temp) {
-  const now = Date.now();
+  const now    = Date.now();
   const inicio = new Date(temp.inicio).getTime();
   const fin    = new Date(temp.fin).getTime();
   if (now < inicio) return 'not_started';
@@ -107,12 +108,8 @@ function buildCountdown(targetIso) {
   const diff = new Date(targetIso).getTime() - Date.now();
   if (diff <= 0) return '00d 00h 00m 00s';
   const totalSec = Math.floor(diff / 1000);
-  const days  = Math.floor(totalSec / 86400);
-  const hours = Math.floor((totalSec % 86400) / 3600);
-  const mins  = Math.floor((totalSec % 3600) / 60);
-  const secs  = totalSec % 60;
   const pad = n => String(n).padStart(2,'0');
-  return `${pad(days)}d ${pad(hours)}h ${pad(mins)}m ${pad(secs)}s`;
+  return `${pad(Math.floor(totalSec/86400))}d ${pad(Math.floor((totalSec%86400)/3600))}h ${pad(Math.floor((totalSec%3600)/60))}m ${pad(totalSec%60)}s`;
 }
 
 /* ===== COURSE DATA ===== */
@@ -154,45 +151,41 @@ const TEMPORALES = [
   {
     id:"T1", nombre:"Taller Intensivo: Álgebra para Exámenes", area:"ciencias",
     img:"https://images.pexels.com/photos/159844/mathematics-blackboard-education-learn-159844.jpeg?auto=compress&cs=tinysrgb&w=800",
-    inicio: "2026-03-10T00:00:00",
-    fin:    "2026-03-25T23:59:59",
+    inicio:"2026-03-10T00:00:00", fin:"2026-03-25T23:59:59",
     descripcion:"Refuerza ecuaciones, sistemas y problemas de examen en 2 semanas.", link:"ingles.html"
   },
   {
     id:"T2", nombre:"Writing Bootcamp (B1-B2)", area:"idiomas",
     img:"https://images.pexels.com/photos/261909/pexels-photo-261909.jpeg?auto=compress&cs=tinysrgb&w=800",
-    inicio: "2026-03-09T08:00:00",
-    fin:    "2026-03-16T23:59:59",
+    inicio:"2026-03-09T08:00:00", fin:"2026-03-16T23:59:59",
     descripcion:"Ensayos, emails formales e informes. Feedback personalizado.", link:"ingles.html"
   },
   {
     id:"T3", nombre:"Física Express: MRU y MRUV", area:"ciencias",
     img:"https://images.pexels.com/photos/256417/pexels-photo-256417.jpeg?auto=compress&cs=tinysrgb&w=800",
-    inicio: "2026-03-09T00:00:00",
-    fin:    "2026-03-11T23:59:59",
+    inicio:"2026-03-09T00:00:00", fin:"2026-03-11T23:59:59",
     descripcion:"Repaso intensivo con ejercicios y simulaciones.", link:"ingles.html"
   },
   {
     id:"T4", nombre:"Taller de Debate y Oratoria", area:"letras",
     img:"https://images.pexels.com/photos/3184296/pexels-photo-3184296.jpeg?auto=compress&cs=tinysrgb&w=800",
-    inicio: "2026-02-20T00:00:00",
-    fin:    "2026-03-01T23:59:59",
+    inicio:"2026-02-20T00:00:00", fin:"2026-03-01T23:59:59",
     descripcion:"Técnicas de argumentación y presentación oral.", link:"ingles.html"
   },
   {
     id:"T5", nombre:"Programación con Python — Básico", area:"tecnologia",
     img:"https://images.pexels.com/photos/3862132/pexels-photo-3862132.jpeg?auto=compress&cs=tinysrgb&w=800",
-    inicio: "2026-02-28T00:00:00",
-    fin:    "2026-03-05T23:59:59",
+    inicio:"2026-02-28T00:00:00", fin:"2026-03-05T23:59:59",
     descripcion:"Intro a Python: variables, bucles y funciones.", link:"ingles.html"
   },
 ];
 
-/* ===== STORAGE ===== */
+/* ===== STORAGE KEYS ===== */
 const PROFILE_KEY = "perfil_usuario";
 const ENROLL_KEY  = "inscripciones";
 const FAV_KEY     = "secundaria_favoritos";
 
+/* ===== STORAGE HELPERS ===== */
 function getProfile() {
   try {
     let p = JSON.parse(localStorage.getItem(PROFILE_KEY));
@@ -203,40 +196,33 @@ function getProfile() {
     return p;
   } catch { return {}; }
 }
-function getEnrolls() { try { return JSON.parse(localStorage.getItem(ENROLL_KEY)) || []; } catch { return []; } }
-function saveEnrolls(arr) { localStorage.setItem(ENROLL_KEY, JSON.stringify(arr)); }
-function getFavs() { try { return JSON.parse(localStorage.getItem(FAV_KEY)) || []; } catch { return []; } }
-function saveFavs(arr) { localStorage.setItem(FAV_KEY, JSON.stringify(arr)); }
-function toggleFav(id) { const f = getFavs(); const e = f.includes(id); saveFavs(e ? f.filter(x=>x!==id) : [...f,id]); }
+function getEnrolls()       { try { return JSON.parse(localStorage.getItem(ENROLL_KEY)) || []; } catch { return []; } }
+function saveEnrolls(arr)   { localStorage.setItem(ENROLL_KEY, JSON.stringify(arr)); }
+function getFavs()          { try { return JSON.parse(localStorage.getItem(FAV_KEY)) || []; } catch { return []; } }
+function saveFavs(arr)      { localStorage.setItem(FAV_KEY, JSON.stringify(arr)); }
+function toggleFav(id)      { const f = getFavs(); const e = f.includes(id); saveFavs(e ? f.filter(x=>x!==id) : [...f,id]); }
 function isEnrolledCourse(id) { return getEnrolls().some(c => c.id === id && c.tipo === "permanente"); }
-function isEnrolledTemp(id) { return getEnrolls().some(c => c.id === id && c.tipo === "temporal"); }
+function isEnrolledTemp(id)   { return getEnrolls().some(c => c.id === id && c.tipo === "temporal"); }
 
-/* ===== FIREBASE HELPERS ===== */
-/**
- * Sincroniza inscripción permanente con Firebase.
- * Se llama DESPUÉS de guardar en localStorage para no bloquear la UI.
- */
+/* ===== FIREBASE SYNC HELPERS ===== */
 async function syncEnrollToFirebase(course, tipo = "permanente") {
   if (!currentUID) return;
   try {
     await dbEnrollCourse(currentUID, {
       id:     String(course.id),
       nombre: course.nombre,
-      area:   course.area   || '',
+      area:   course.area        || '',
       tipo,
       horas:  course.duracionHoras || course.horas || 0,
-      img:    course.img    || '',
-      link:   course.link   || '#',
-      grado:  course.grado  || null,
+      img:    course.img         || '',
+      link:   course.link        || '#',
+      grado:  course.grado       || null,
     });
   } catch (e) {
     console.warn('[Firebase] syncEnrollToFirebase:', e);
   }
 }
 
-/**
- * Actualiza la nota de un examen en Firebase.
- */
 async function syncExamResultToFirebase(cursoId, nota, aprobado) {
   if (!currentUID) return;
   try {
@@ -246,9 +232,6 @@ async function syncExamResultToFirebase(cursoId, nota, aprobado) {
   }
 }
 
-/**
- * Suma XP en Firebase.
- */
 async function syncXPToFirebase(amount) {
   if (!currentUID || amount <= 0) return;
   try {
@@ -263,24 +246,22 @@ function enrollCourse(course) {
   const list = getEnrolls();
   if (list.some(x => x.id === course.id && x.tipo === "permanente")) return false;
   const enrollment = {
-    tipo:"permanente",
-    id: course.id,
-    nombre: course.nombre,
-    area: course.area,
-    grado: course.grado,
-    horas: course.duracionHoras,
-    img: course.img,
+    tipo:       "permanente",
+    id:         course.id,
+    nombre:     course.nombre,
+    area:       course.area,
+    grado:      course.grado,
+    horas:      course.duracionHoras,
+    img:        course.img,
     inscritoEl: new Date().toISOString(),
-    estado: "en_progreso",
-    link: course.link
+    estado:     "en_progreso",
+    link:       course.link,
   };
   list.push(enrollment);
   saveEnrolls(list);
 
-  /* ── Sync Firebase (no bloqueante) ── */
   syncEnrollToFirebase(course, "permanente");
 
-  /* ── Sumar XP al perfil local ── */
   const xpGain = Math.round((course.duracionHoras || 0) * 8);
   try {
     const p = JSON.parse(localStorage.getItem(PROFILE_KEY) || '{}');
@@ -298,24 +279,21 @@ function enrollTemporal(temp) {
   const list = getEnrolls();
   if (list.some(x => x.id === temp.id && x.tipo === "temporal")) return false;
   const enrollment = {
-    tipo:"temporal",
-    id: temp.id,
-    nombre: temp.nombre,
-    area: temp.area,
-    horas: 0,
-    img: temp.img,
+    tipo:       "temporal",
+    id:         temp.id,
+    nombre:     temp.nombre,
+    area:       temp.area,
+    horas:      0,
+    img:        temp.img,
     inscritoEl: new Date().toISOString(),
-    estado: "en_progreso",
-    inicio: temp.inicio,
-    fin: temp.fin,
-    link: temp.link
+    estado:     "en_progreso",
+    inicio:     temp.inicio,
+    fin:        temp.fin,
+    link:       temp.link,
   };
   list.push(enrollment);
   saveEnrolls(list);
-
-  /* ── Sync Firebase (no bloqueante) ── */
   syncEnrollToFirebase({ ...temp, duracionHoras: 0 }, "temporal");
-
   return true;
 }
 
@@ -326,8 +304,11 @@ let state = { page:1, perPage:12, search:"", area:"todas", grado:"todos", orden:
 function applyFilters(data) {
   let res = [...data];
   if (state.favoritosOnly) { const f=getFavs(); res=res.filter(c=>f.includes(c.id)); }
-  if (state.search.trim()) { const q=state.search.toLowerCase(); res=res.filter(c=>c.nombre.toLowerCase().includes(q)||c.profesor.toLowerCase().includes(q)||(c.etiquetas||[]).some(e=>e.toLowerCase().includes(q))); }
-  if (state.area!=="todas") res=res.filter(c=>c.area===state.area);
+  if (state.search.trim()) {
+    const q=state.search.toLowerCase();
+    res=res.filter(c=>c.nombre.toLowerCase().includes(q)||c.profesor.toLowerCase().includes(q)||(c.etiquetas||[]).some(e=>e.toLowerCase().includes(q)));
+  }
+  if (state.area!=="todas")  res=res.filter(c=>c.area===state.area);
   if (state.grado!=="todos") res=res.filter(c=>String(c.grado)===state.grado);
   switch(state.orden) {
     case "nombre-asc":  res.sort((a,b)=>a.nombre.localeCompare(b.nombre)); break;
@@ -340,19 +321,19 @@ function applyFilters(data) {
   return res;
 }
 
-/* ===== AREA COLOR ===== */
+/* ===== AREA STYLES ===== */
 const AREA_CLASSES = { ciencias:"area-ciencias", letras:"area-letras", idiomas:"area-idiomas", tecnologia:"area-tecnologia", arte:"area-arte" };
 const AREA_ICONS   = { ciencias:"⚗", letras:"📖", idiomas:"🌍", tecnologia:"💻", arte:"🎨" };
 
 /* ===== COURSE CARD ===== */
 function courseCard(c) {
-  const favs = getFavs();
-  const fav = favs.includes(c.id);
+  const favs     = getFavs();
+  const fav      = favs.includes(c.id);
   const enrolled = isEnrolledCourse(c.id);
-  const ribbon = c.popularidad >= 95 ? `<div class="ribbon">★ TOP</div>` : "";
-  const areaCls = AREA_CLASSES[c.area] || "";
-  const areaIcon = AREA_ICONS[c.area] || "📚";
-  const xp = Math.round(c.duracionHoras * 8);
+  const ribbon   = c.popularidad >= 95 ? `<div class="ribbon">★ TOP</div>` : "";
+  const areaCls  = AREA_CLASSES[c.area] || "";
+  const areaIcon = AREA_ICONS[c.area]   || "📚";
+  const xp       = Math.round(c.duracionHoras * 8);
   return `
   <article class="card reveal" data-id="${c.id}">
     ${ribbon}
@@ -387,12 +368,12 @@ function courseCard(c) {
 
 /* ===== RENDER COURSES ===== */
 function renderCourses() {
-  const filtered = applyFilters(CURSOS);
+  const filtered   = applyFilters(CURSOS);
   const totalPages = Math.max(1, Math.ceil(filtered.length / state.perPage));
-  state.page = Math.min(state.page, totalPages);
-  const start = (state.page - 1) * state.perPage;
-  const slice = filtered.slice(start, start + state.perPage);
-  const grid = document.getElementById("coursesGrid");
+  state.page       = Math.min(state.page, totalPages);
+  const start      = (state.page - 1) * state.perPage;
+  const slice      = filtered.slice(start, start + state.perPage);
+  const grid       = document.getElementById("coursesGrid");
   if (!grid) return;
 
   if (!slice.length) {
@@ -405,16 +386,18 @@ function renderCourses() {
   const nextBtn = document.getElementById("nextPage");
   if (prevBtn) prevBtn.disabled = state.page === 1;
   if (nextBtn) nextBtn.disabled = state.page === totalPages;
+
   const pageList = document.getElementById("pageList");
   if (pageList) {
     pageList.innerHTML = "";
     for (let i = 1; i <= totalPages; i++) {
-      const li = document.createElement("li");
+      const li  = document.createElement("li");
       const btn = document.createElement("button");
       btn.textContent = String(i);
       if (i === state.page) btn.classList.add("active");
       btn.addEventListener("click", () => { state.page = i; renderCourses(); observeReveal(); });
-      li.appendChild(btn); pageList.appendChild(li);
+      li.appendChild(btn);
+      pageList.appendChild(li);
     }
   }
 
@@ -429,25 +412,24 @@ function renderCourses() {
   grid.querySelectorAll("[data-open]").forEach(btn => {
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
-      const id = Number(btn.dataset.open);
-      openModal(CURSOS.find(c => c.id === id));
+      openModal(CURSOS.find(c => c.id === Number(btn.dataset.open)));
     });
   });
   grid.querySelectorAll("[data-enroll]").forEach(btn => {
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
       if (btn.disabled) return;
-      const id = Number(btn.dataset.enroll);
-      const course = CURSOS.find(c => c.id === id);
-      const ok = enrollCourse(course);
-      if (ok) {
+      const course = CURSOS.find(c => c.id === Number(btn.dataset.enroll));
+      if (enrollCourse(course)) {
         showToast("▶ ¡INSCRITO! Revisa tu perfil.", "ok");
-        btn.textContent = "✓ INSCRITO"; btn.classList.add("enrolled"); btn.disabled = true;
+        btn.textContent = "✓ INSCRITO";
+        btn.classList.add("enrolled");
+        btn.disabled = true;
         const card = btn.closest(".card");
         if (card) {
-          const es = card.querySelector(".enroll-state");
-          if (es) { es.textContent = "✓ INSCRITO"; es.className = "enroll-state enrolled"; }
+          const es   = card.querySelector(".enroll-state");
           const fill = card.querySelector(".card-xp-fill");
+          if (es)   { es.textContent = "✓ INSCRITO"; es.className = "enroll-state enrolled"; }
           if (fill) fill.style.width = "100%";
         }
       } else {
@@ -474,34 +456,25 @@ function renderTemporales() {
     const enrolled = isEnrolledTemp(t.id);
 
     let badgeTxt, badgeCls;
-    if (status === 'expired')     { badgeTxt = "CADUCADO";  badgeCls = "badge-expired"; }
-    else if (status === 'active') { badgeTxt = "⚡ ACTIVO"; badgeCls = "badge-active";  }
-    else                          { badgeTxt = "🔒 PRÓXIMO"; badgeCls = "badge-soon";   }
+    if      (status === 'expired')     { badgeTxt = "CADUCADO";  badgeCls = "badge-expired"; }
+    else if (status === 'active')      { badgeTxt = "⚡ ACTIVO"; badgeCls = "badge-active";  }
+    else                               { badgeTxt = "🔒 PRÓXIMO"; badgeCls = "badge-soon";   }
 
     const inicioFmt = fmtDate(t.inicio);
     const finFmt    = fmtDate(t.fin);
 
     let actionBtn;
-    if (status === 'expired') {
-      actionBtn = `<span class="temp-status-badge badge-expired-txt">✗ CADUCÓ</span>`;
-    } else if (status === 'not_started') {
-      actionBtn = `<span class="temp-status-badge badge-soon-txt">🔒 AÚN NO ABRE</span>`;
-    } else if (enrolled) {
-      actionBtn = `<span class="temp-enrolled-badge">✓ INSCRITO</span>`;
-    } else {
-      actionBtn = `<button class="btn btn-enroll" data-enroll-temp="${t.id}" style="font-size:0.4rem;padding:7px 10px;">▶ INSCRIBIRSE</button>`;
-    }
+    if      (status === 'expired')     actionBtn = `<span class="temp-status-badge badge-expired-txt">✗ CADUCÓ</span>`;
+    else if (status === 'not_started') actionBtn = `<span class="temp-status-badge badge-soon-txt">🔒 AÚN NO ABRE</span>`;
+    else if (enrolled)                 actionBtn = `<span class="temp-enrolled-badge">✓ INSCRITO</span>`;
+    else                               actionBtn = `<button class="btn btn-enroll" data-enroll-temp="${t.id}" style="font-size:0.4rem;padding:7px 10px;">▶ INSCRIBIRSE</button>`;
 
-    let countdownLabel = '';
-    if (status === 'not_started') countdownLabel = 'ABRE EN:';
-    else if (status === 'active') countdownLabel = 'CIERRA EN:';
+    const countdownLabel = status === 'not_started' ? 'ABRE EN:' : status === 'active' ? 'CIERRA EN:' : '';
 
     return `
     <article class="temp-card ${status !== 'active' ? 'expired' : ''}" data-temp="${t.id}">
       <div class="temp-badge ${badgeCls}">${badgeTxt}</div>
-      <div class="temp-card-img">
-        <img src="${t.img}" alt="${t.nombre}" loading="lazy">
-      </div>
+      <div class="temp-card-img"><img src="${t.img}" alt="${t.nombre}" loading="lazy"></div>
       <div class="temp-body">
         <div class="temp-name">${t.nombre}</div>
         <div class="temp-desc">${t.descripcion}</div>
@@ -513,9 +486,7 @@ function renderTemporales() {
           <div class="countdown-wrap">
             ${status !== 'expired'
               ? `<span class="countdown-label">${countdownLabel}</span>
-                 <span class="countdown ${status === 'expired' ? 'expired-text' : ''}" id="cd-${t.id}">
-                   ${status === 'not_started' ? buildCountdown(t.inicio) : buildCountdown(t.fin)}
-                 </span>`
+                 <span class="countdown" id="cd-${t.id}">${status === 'not_started' ? buildCountdown(t.inicio) : buildCountdown(t.fin)}</span>`
               : `<span class="countdown expired-text">VENCIÓ: ${finFmt}</span>`
             }
           </div>
@@ -530,19 +501,11 @@ function renderTemporales() {
     if (!el) return;
     const status = getTempStatus(t);
     if (status === 'expired') return;
-
     const targetIso = status === 'not_started' ? t.inicio : t.fin;
     const ivId = setInterval(() => {
       const newStatus = getTempStatus(t);
-      if (newStatus === 'expired') {
-        clearInterval(ivId);
-        renderTemporales();
-        return;
-      }
-      if (status === 'not_started' && newStatus === 'active') {
-        clearInterval(ivId);
-        renderTemporales();
-        return;
+      if (newStatus === 'expired' || (status === 'not_started' && newStatus === 'active')) {
+        clearInterval(ivId); renderTemporales(); return;
       }
       const cdEl = document.getElementById(`cd-${t.id}`);
       if (cdEl) cdEl.textContent = buildCountdown(targetIso);
@@ -552,13 +515,12 @@ function renderTemporales() {
 
   grid.querySelectorAll("[data-enroll-temp]").forEach(btn => {
     btn.addEventListener("click", () => {
-      const id = btn.dataset.enrollTemp;
+      const id   = btn.dataset.enrollTemp;
       const temp = TEMPORALES.find(t => t.id === id);
-      const st = getTempStatus(temp);
-      if (st === 'expired')     { showToast("⚠ ESTE CURSO YA CADUCÓ", "bad"); return; }
+      const st   = getTempStatus(temp);
+      if (st === 'expired')     { showToast("⚠ ESTE CURSO YA CADUCÓ", "bad");  return; }
       if (st === 'not_started') { showToast("⚠ ESTE CURSO AÚN NO HA ABIERTO", "warn"); return; }
-      const ok = enrollTemporal(temp);
-      if (ok) {
+      if (enrollTemporal(temp)) {
         showToast("⚡ ¡INSCRITO EN TALLER!", "ok");
         btn.parentElement.innerHTML = `<span class="temp-enrolled-badge">✓ INSCRITO</span>`;
       } else {
@@ -568,7 +530,7 @@ function renderTemporales() {
   });
 }
 
-/* ===== FILTERS SETUP ===== */
+/* ===== FILTER CONTROLS ===== */
 function resetFilters() {
   state = { page:1, perPage:12, search:"", area:"todas", grado:"todos", orden:"relevancia", favoritosOnly:false };
   const s = document.getElementById("searchInput"); if (s) s.value = "";
@@ -587,7 +549,8 @@ document.getElementById("btnReset")?.addEventListener("click", resetFilters);
 document.getElementById("btnFavoritos")?.addEventListener("click", () => {
   state.favoritosOnly = !state.favoritosOnly;
   document.getElementById("btnFavoritos").classList.toggle("active", state.favoritosOnly);
-  state.page = 1; renderCourses();
+  state.page = 1;
+  renderCourses();
 });
 document.getElementById("prevPage")?.addEventListener("click", () => { state.page = Math.max(1, state.page-1); renderCourses(); });
 document.getElementById("nextPage")?.addEventListener("click", () => {
@@ -597,14 +560,14 @@ document.getElementById("nextPage")?.addEventListener("click", () => {
 });
 
 /* ===== MODAL ===== */
-const modal = document.getElementById("courseModal");
+const modal     = document.getElementById("courseModal");
 const modalBody = modal?.querySelector(".modal-body");
-const modalClose = modal?.querySelector(".modal-close");
+const modalClose= modal?.querySelector(".modal-close");
 
 function openModal(course) {
   if (!modal || !modalBody || !course) return;
   const enrolled = isEnrolledCourse(course.id);
-  const areaCls = AREA_CLASSES[course.area] || "";
+  const areaCls  = AREA_CLASSES[course.area] || "";
   modalBody.innerHTML = `
     <div class="modal-head">
       <img src="${course.img}" alt="${course.nombre}">
@@ -648,26 +611,35 @@ function openModal(course) {
   modal.setAttribute("aria-hidden","false");
 
   modal.querySelector("[data-modal-fav]")?.addEventListener("click", () => {
-    toggleFav(course.id); showToast("♥ FAVORITO ACTUALIZADO", "ok"); renderCourses();
+    toggleFav(course.id);
+    showToast("♥ FAVORITO ACTUALIZADO", "ok");
+    renderCourses();
   });
   const inscBtn = modal.querySelector("#inscribirBtn");
   inscBtn?.addEventListener("click", () => {
     if (isEnrolledCourse(course.id)) { showToast("YA INSCRITO 😉","warn"); return; }
     enrollCourse(course);
-    inscBtn.textContent = "✓ INSCRITO"; inscBtn.classList.add("enrolled"); inscBtn.disabled = true;
+    inscBtn.textContent = "✓ INSCRITO";
+    inscBtn.classList.add("enrolled");
+    inscBtn.disabled = true;
     modal.querySelector("#inscOk").hidden = false;
     showToast("▶ ¡INSCRITO CON ÉXITO!","ok");
     renderCourses();
   });
 }
 
-function closeModal() { modal?.classList.remove("show"); modal?.setAttribute("aria-hidden","true"); }
+function closeModal() {
+  modal?.classList.remove("show");
+  modal?.setAttribute("aria-hidden","true");
+}
 modalClose?.addEventListener("click", closeModal);
 modal?.addEventListener("click", e => { if (e.target === modal) closeModal(); });
 document.addEventListener("keydown", e => { if (e.key === "Escape") closeModal(); });
 
 /* ===== REVEAL ===== */
-function observeReveal() { document.querySelectorAll(".reveal:not(.visible)").forEach(el => io.observe(el)); }
+function observeReveal() {
+  document.querySelectorAll(".reveal:not(.visible)").forEach(el => io.observe(el));
+}
 
 /* ===== INIT ===== */
 getProfile();
@@ -675,7 +647,7 @@ renderCourses();
 renderTemporales();
 observeReveal();
 
-/* ===== AUTH LISTENER — establece currentUID ===== */
+/* ===== AUTH LISTENER ===== */
 onAuthChange((user) => {
   currentUID = user ? user.uid : null;
 });
