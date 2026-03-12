@@ -1,11 +1,14 @@
 /* =====================================================
-   EduLearn — database.js  v4.2
-   FIXES v4.2 (cross-device sync):
-   - syncAllToLocalStorage: siempre sobreescribe con datos
-     de Firebase como fuente de verdad (source of truth)
-   - enrollCourseDB: alias exportado para compatibilidad
-   - updateUserProfile: ya no pisa datos frescos de Firebase
-   - Timestamps convertidos correctamente en todos los métodos
+   EduLearn — database.js  v4.3
+   FIXES v4.3:
+   - enrollCourse: ya NO resetea nota_final/aprobado para
+     documentos existentes (usaba setDoc+merge con null,
+     sobreescribiendo notas reales → corregido)
+   - updateExamResult: cambiado de updateDoc → setDoc
+     con merge:true para evitar el error "No document
+     to update" cuando el documento aún no existe
+   - Ambos fixes resuelven el race condition que impedía
+     que la nota del examen final se guardara en Firebase
    ===================================================== */
 
 import { db } from './firebase.js';
@@ -54,13 +57,11 @@ export async function getUserProfile(uid) {
 
 export async function updateUserProfile(uid, data) {
   try {
-    // Guardar en Firestore primero
     await updateDoc(doc(db, 'usuarios', uid), {
       ...data,
       updatedAt: serverTimestamp(),
     });
 
-    // Actualizar localStorage sólo con los campos enviados (merge)
     try {
       const local = JSON.parse(localStorage.getItem('perfil_usuario') || '{}');
       localStorage.setItem('perfil_usuario', JSON.stringify({ ...local, ...data }));
@@ -111,35 +112,51 @@ export async function updateStreak(uid, racha) {
 /* ═══════════════════════════════════════════════════
    INSCRIPCIONES — colección "inscripciones"
    ID de documento: "{uid}_{cursoId}"
+
+   FIX v4.3: enrollCourse ya no sobreescribe nota_final
+   ni aprobado si el documento ya existe.
    ═══════════════════════════════════════════════════ */
 
 export async function enrollCourse(uid, curso) {
   try {
-    const docId = `${uid}_${curso.id}`;
-    const data = {
-      uid,
-      cursoId:    curso.id,
-      nombre:     curso.nombre   || curso.name  || '',
-      area:       curso.area     || '',
-      grado:      curso.grado    || '',
-      tipo:       curso.tipo     || 'permanente',
-      horas:      curso.horas    || curso.duracionHoras || 0,
-      img:        curso.img      || '',
-      link:       curso.link     || '#',
-      estado:     'en_progreso',
-      nota_final: null,
-      aprobado:   null,
-      enrolledAt: serverTimestamp(),
-      updatedAt:  serverTimestamp(),
-    };
-    await setDoc(doc(db, 'inscripciones', docId), data, { merge: true });
+    const cursoId = curso.id || curso.cursoId;
+    const docId   = `${uid}_${cursoId}`;
+    const docRef  = doc(db, 'inscripciones', docId);
 
-    _addEnrollmentLocal({
-      ...data,
-      id:         curso.id,
-      enrolledAt: new Date().toISOString(),
-      updatedAt:  new Date().toISOString(),
-    });
+    /* Verificar si el documento ya existe para no pisar la nota */
+    const existing = await getDoc(docRef);
+    const isNew    = !existing.exists();
+
+    /* Datos base que siempre se actualizan */
+    const baseData = {
+      uid,
+      cursoId,
+      nombre:    curso.nombre   || curso.name  || '',
+      area:      curso.area     || '',
+      grado:     curso.grado    || '',
+      tipo:      curso.tipo     || 'permanente',
+      horas:     curso.horas    || curso.duracionHoras || 0,
+      img:       curso.img      || '',
+      link:      curso.link     || '#',
+      updatedAt: serverTimestamp(),
+    };
+
+    /* Solo añadir campos de estado/nota en documentos NUEVOS.
+       Para documentos existentes, setDoc+merge NO incluirá
+       nota_final ni aprobado → no los sobreescribirá. */
+    if (isNew) {
+      Object.assign(baseData, {
+        estado:     'en_progreso',
+        nota_final: null,
+        aprobado:   null,
+        enrolledAt: serverTimestamp(),
+      });
+    }
+
+    await setDoc(docRef, baseData, { merge: true });
+
+    /* Actualizar localStorage sin pisar la nota */
+    _updateEnrollmentLocal(cursoId, baseData, isNew);
 
     return { error: null };
   } catch (err) {
@@ -151,25 +168,45 @@ export async function enrollCourse(uid, curso) {
 /* Alias para compatibilidad con módulos que importan enrollCourseDB */
 export const enrollCourseDB = enrollCourse;
 
+/* ═══════════════════════════════════════════════════
+   FIX v4.3: updateExamResult usa setDoc+merge en lugar
+   de updateDoc para evitar el error "document not found"
+   cuando el documento aún no ha sido creado por enrollCourse.
+   ═══════════════════════════════════════════════════ */
 export async function updateExamResult(uid, cursoId, nota_final, aprobado) {
   try {
-    const docId = `${uid}_${cursoId}`;
-    await updateDoc(doc(db, 'inscripciones', docId), {
+    const docId  = `${uid}_${cursoId}`;
+    const docRef = doc(db, 'inscripciones', docId);
+
+    /* setDoc con merge:true crea el documento si no existe
+       y actualiza solo los campos indicados si ya existe */
+    await setDoc(docRef, {
+      uid,
+      cursoId,
       nota_final,
       aprobado,
       estado:    aprobado ? 'completado' : 'en_progreso',
       updatedAt: serverTimestamp(),
-    });
+    }, { merge: true });
+
+    /* Sincronizar localStorage */
     try {
       const list = JSON.parse(localStorage.getItem('inscripciones') || '[]');
       const idx  = list.findIndex(c => c.id === cursoId || c.cursoId === cursoId);
       if (idx >= 0) {
-        list[idx].nota_final = nota_final;
-        list[idx].aprobado   = aprobado;
-        list[idx].estado     = aprobado ? 'completado' : 'en_progreso';
+        /* Solo actualizar la nota si la nueva es mayor o igual */
+        const prevNota = list[idx].nota_final;
+        if (typeof prevNota !== 'number' || nota_final >= prevNota) {
+          list[idx].nota_final = nota_final;
+        }
+        if (aprobado || list[idx].aprobado !== true) {
+          list[idx].aprobado = aprobado;
+        }
+        list[idx].estado = aprobado ? 'completado' : 'en_progreso';
         localStorage.setItem('inscripciones', JSON.stringify(list));
       }
     } catch (_) {}
+
     return { error: null };
   } catch (err) {
     console.error('[DB] updateExamResult:', err);
@@ -308,10 +345,7 @@ export async function addInsignia(uid, badgeId) {
 
 /* ═══════════════════════════════════════════════════
    SINCRONIZACIÓN COMPLETA  Firebase → localStorage
-   v4.2: Firebase es la FUENTE DE VERDAD.
-   Siempre sobreescribe localStorage con datos de Firebase.
-   Si Firebase devuelve vacío, conserva los datos locales
-   como fallback para no perder datos offline.
+   Firebase es la FUENTE DE VERDAD.
    ═══════════════════════════════════════════════════ */
 export async function syncAllToLocalStorage(uid) {
   try {
@@ -328,24 +362,18 @@ export async function syncAllToLocalStorage(uid) {
       const clean = { ...profile };
       delete clean.createdAt;
       delete clean.updatedAt;
-      // Firebase es fuente de verdad: sobreescribir completamente
       localStorage.setItem('perfil_usuario', JSON.stringify(clean));
     }
-    // Si profile es null, conservar localStorage como fallback (modo offline)
 
     /* ── INSCRIPCIONES ── */
     if (Array.isArray(enrollments) && enrollments.length > 0) {
-      // Firebase tiene datos → sobreescribir como fuente de verdad
       localStorage.setItem('inscripciones', JSON.stringify(enrollments));
     } else if (enrollments.length === 0) {
-      // Firebase devuelve vacío: puede ser usuario nuevo o error de red.
-      // Verificar si hay inscripciones locales pendientes de sync.
       const localRaw = localStorage.getItem('inscripciones');
       if (localRaw) {
         try {
           const localList = JSON.parse(localRaw);
           if (Array.isArray(localList) && localList.length > 0) {
-            // Hay datos locales sin sincronizar → subirlos a Firebase
             console.log('[Sync] Subiendo inscripciones locales a Firebase...');
             const uploadPromises = localList.map(curso =>
               enrollCourse(uid, { ...curso, id: curso.id || curso.cursoId })
@@ -360,16 +388,13 @@ export async function syncAllToLocalStorage(uid) {
     const misionesKeys = Object.keys(misiones).filter(k => k !== 'updatedAt');
     if (misionesKeys.length > 0) {
       const { updatedAt: _u, ...misionesClean } = misiones;
-      // Firebase es fuente de verdad: sobreescribir
       localStorage.setItem('misiones_estado_v4', JSON.stringify(misionesClean));
     }
-    // Si está vacío en Firebase, conservar localStorage como fallback
 
     /* ── BUZÓN ── */
     const buzonKeys = Object.keys(buzon).filter(k => k !== 'updatedAt');
     if (buzonKeys.length > 0) {
       const { updatedAt: _u, ...buzonClean } = buzon;
-      // Firebase es fuente de verdad: sobreescribir
       localStorage.setItem('buzon_estado', JSON.stringify(buzonClean));
     }
 
@@ -392,9 +417,56 @@ export async function saveFullProfile(uid, profileData) {
 /* ═══════════════════════════════════════════════════
    HELPERS PRIVADOS
    ═══════════════════════════════════════════════════ */
-function _addEnrollmentLocal(curso) {
+
+/**
+ * Actualiza localStorage para la inscripción indicada.
+ * Para documentos nuevos añade la entrada; para existentes
+ * solo actualiza campos no-resultado para no pisar la nota.
+ */
+function _updateEnrollmentLocal(cursoId, data, isNew) {
   try {
     const list = JSON.parse(localStorage.getItem('inscripciones') || '[]');
+    const idx  = list.findIndex(c => c.id === cursoId || c.cursoId === cursoId);
+
+    if (isNew || idx === -1) {
+      /* Nuevo: añadir entrada completa */
+      const entry = {
+        ...data,
+        id:         cursoId,
+        enrolledAt: new Date().toISOString(),
+        updatedAt:  new Date().toISOString(),
+      };
+      /* Eliminar timestamps de Firestore no serializables */
+      delete entry.enrolledAt;
+      entry.enrolledAt = new Date().toISOString();
+      if (idx === -1) {
+        list.push(entry);
+      } else {
+        list[idx] = entry;
+      }
+    } else {
+      /* Existente: actualizar solo metadatos, NO nota ni aprobado */
+      const keep = {
+        nombre:    data.nombre,
+        area:      data.area,
+        grado:     data.grado,
+        tipo:      data.tipo,
+        horas:     data.horas,
+        img:       data.img,
+        link:      data.link,
+        updatedAt: new Date().toISOString(),
+      };
+      Object.assign(list[idx], keep);
+    }
+
+    localStorage.setItem('inscripciones', JSON.stringify(list));
+  } catch (_) {}
+}
+
+/* Función legacy — mantenida por compatibilidad */
+function _addEnrollmentLocal(curso) {
+  try {
+    const list   = JSON.parse(localStorage.getItem('inscripciones') || '[]');
     const exists = list.find(c => c.id === curso.id || c.cursoId === curso.cursoId);
     if (!exists) {
       list.push(curso);
