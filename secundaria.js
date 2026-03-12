@@ -1,6 +1,21 @@
 /* =====================================================
-   EduLearn — Secundaria JS v6.0 — Fechas inicio/fin + Countdown
+   EduLearn — Secundaria JS v7.0 — Firebase Sync
+   NUEVO: Sincronización con Firebase Firestore
+   - Inscripciones guardadas en Firebase + localStorage
+   - Notas de exámenes sincronizadas con el perfil
+   - Compatible con perfil.js y database.js v4.0
    ===================================================== */
+'use strict';
+
+import { onAuthChange } from './auth.js';
+import {
+  enrollCourse   as dbEnrollCourse,
+  updateExamResult as dbUpdateExamResult,
+  addXP          as dbAddXP,
+} from './database.js';
+
+/* ── UID del usuario activo (se asigna tras auth) ── */
+let currentUID = null;
 
 /* ===== LOADER ===== */
 window.addEventListener("load", () => {
@@ -79,10 +94,6 @@ function fmtDate(iso) {
 }
 
 /* ===== COUNTDOWN HELPERS ===== */
-/**
- * Returns status of a temporal course:
- * 'not_started' | 'active' | 'expired'
- */
 function getTempStatus(temp) {
   const now = Date.now();
   const inicio = new Date(temp.inicio).getTime();
@@ -92,10 +103,6 @@ function getTempStatus(temp) {
   return 'active';
 }
 
-/**
- * Build a live countdown string from a target ISO date.
- * Returns formatted DD d HH h MM m SS s
- */
 function buildCountdown(targetIso) {
   const diff = new Date(targetIso).getTime() - Date.now();
   if (diff <= 0) return '00d 00h 00m 00s';
@@ -142,7 +149,7 @@ const CURSOS = [
   {id:30, nombre:"Tecnología III: Pensamiento Computacional", area:"tecnologia", grado:3, duracionHoras:20, popularidad:90, img:"https://images.pexels.com/photos/3862132/pexels-photo-3862132.jpeg?auto=compress&cs=tinysrgb&w=800", profesor:"S. Flores", fecha:"2025-03-26", etiquetas:["lógica","problemas"], descripcion:"Descomposición, patrones y algoritmos.", link:"tecnologia3.html"},
 ];
 
-/* ===== TEMPORALES — con fecha INICIO y FIN explícitas ===== */
+/* ===== TEMPORALES ===== */
 const TEMPORALES = [
   {
     id:"T1", nombre:"Taller Intensivo: Álgebra para Exámenes", area:"ciencias",
@@ -185,6 +192,7 @@ const TEMPORALES = [
 const PROFILE_KEY = "perfil_usuario";
 const ENROLL_KEY  = "inscripciones";
 const FAV_KEY     = "secundaria_favoritos";
+
 function getProfile() {
   try {
     let p = JSON.parse(localStorage.getItem(PROFILE_KEY));
@@ -203,11 +211,84 @@ function toggleFav(id) { const f = getFavs(); const e = f.includes(id); saveFavs
 function isEnrolledCourse(id) { return getEnrolls().some(c => c.id === id && c.tipo === "permanente"); }
 function isEnrolledTemp(id) { return getEnrolls().some(c => c.id === id && c.tipo === "temporal"); }
 
+/* ===== FIREBASE HELPERS ===== */
+/**
+ * Sincroniza inscripción permanente con Firebase.
+ * Se llama DESPUÉS de guardar en localStorage para no bloquear la UI.
+ */
+async function syncEnrollToFirebase(course, tipo = "permanente") {
+  if (!currentUID) return;
+  try {
+    await dbEnrollCourse(currentUID, {
+      id:     String(course.id),
+      nombre: course.nombre,
+      area:   course.area   || '',
+      tipo,
+      horas:  course.duracionHoras || course.horas || 0,
+      img:    course.img    || '',
+      link:   course.link   || '#',
+      grado:  course.grado  || null,
+    });
+  } catch (e) {
+    console.warn('[Firebase] syncEnrollToFirebase:', e);
+  }
+}
+
+/**
+ * Actualiza la nota de un examen en Firebase.
+ */
+async function syncExamResultToFirebase(cursoId, nota, aprobado) {
+  if (!currentUID) return;
+  try {
+    await dbUpdateExamResult(currentUID, String(cursoId), nota, aprobado);
+  } catch (e) {
+    console.warn('[Firebase] syncExamResultToFirebase:', e);
+  }
+}
+
+/**
+ * Suma XP en Firebase.
+ */
+async function syncXPToFirebase(amount) {
+  if (!currentUID || amount <= 0) return;
+  try {
+    await dbAddXP(currentUID, amount);
+  } catch (e) {
+    console.warn('[Firebase] syncXPToFirebase:', e);
+  }
+}
+
+/* ===== ENROLL FUNCTIONS ===== */
 function enrollCourse(course) {
   const list = getEnrolls();
   if (list.some(x => x.id === course.id && x.tipo === "permanente")) return false;
-  list.push({ tipo:"permanente", id:course.id, nombre:course.nombre, area:course.area, grado:course.grado, horas:course.duracionHoras, img:course.img, inscritoEl:new Date().toISOString(), estado:"en_progreso", link:course.link });
+  const enrollment = {
+    tipo:"permanente",
+    id: course.id,
+    nombre: course.nombre,
+    area: course.area,
+    grado: course.grado,
+    horas: course.duracionHoras,
+    img: course.img,
+    inscritoEl: new Date().toISOString(),
+    estado: "en_progreso",
+    link: course.link
+  };
+  list.push(enrollment);
   saveEnrolls(list);
+
+  /* ── Sync Firebase (no bloqueante) ── */
+  syncEnrollToFirebase(course, "permanente");
+
+  /* ── Sumar XP al perfil local ── */
+  const xpGain = Math.round((course.duracionHoras || 0) * 8);
+  try {
+    const p = JSON.parse(localStorage.getItem(PROFILE_KEY) || '{}');
+    p.xp = (p.xp || 0) + xpGain;
+    localStorage.setItem(PROFILE_KEY, JSON.stringify(p));
+  } catch (_) {}
+  syncXPToFirebase(xpGain);
+
   return true;
 }
 
@@ -216,8 +297,25 @@ function enrollTemporal(temp) {
   if (status !== 'active') return false;
   const list = getEnrolls();
   if (list.some(x => x.id === temp.id && x.tipo === "temporal")) return false;
-  list.push({ tipo:"temporal", id:temp.id, nombre:temp.nombre, area:temp.area, horas:0, img:temp.img, inscritoEl:new Date().toISOString(), estado:"en_progreso", inicio:temp.inicio, fin:temp.fin, link:temp.link });
+  const enrollment = {
+    tipo:"temporal",
+    id: temp.id,
+    nombre: temp.nombre,
+    area: temp.area,
+    horas: 0,
+    img: temp.img,
+    inscritoEl: new Date().toISOString(),
+    estado: "en_progreso",
+    inicio: temp.inicio,
+    fin: temp.fin,
+    link: temp.link
+  };
+  list.push(enrollment);
   saveEnrolls(list);
+
+  /* ── Sync Firebase (no bloqueante) ── */
+  syncEnrollToFirebase({ ...temp, duracionHoras: 0 }, "temporal");
+
   return true;
 }
 
@@ -362,11 +460,9 @@ function renderCourses() {
 }
 
 /* ===== RENDER TEMPORALES ===== */
-/* Almacena los intervalos para limpiarlos al re-render */
 let tempIntervals = [];
 
 function renderTemporales() {
-  // Limpiar intervalos previos
   tempIntervals.forEach(id => clearInterval(id));
   tempIntervals = [];
 
@@ -377,17 +473,14 @@ function renderTemporales() {
     const status   = getTempStatus(t);
     const enrolled = isEnrolledTemp(t.id);
 
-    /* Etiqueta de estado */
     let badgeTxt, badgeCls;
     if (status === 'expired')     { badgeTxt = "CADUCADO";  badgeCls = "badge-expired"; }
     else if (status === 'active') { badgeTxt = "⚡ ACTIVO"; badgeCls = "badge-active";  }
     else                          { badgeTxt = "🔒 PRÓXIMO"; badgeCls = "badge-soon";   }
 
-    /* Fechas formateadas */
     const inicioFmt = fmtDate(t.inicio);
     const finFmt    = fmtDate(t.fin);
 
-    /* Botón de acción */
     let actionBtn;
     if (status === 'expired') {
       actionBtn = `<span class="temp-status-badge badge-expired-txt">✗ CADUCÓ</span>`;
@@ -399,7 +492,6 @@ function renderTemporales() {
       actionBtn = `<button class="btn btn-enroll" data-enroll-temp="${t.id}" style="font-size:0.4rem;padding:7px 10px;">▶ INSCRIBIRSE</button>`;
     }
 
-    /* Label del countdown */
     let countdownLabel = '';
     if (status === 'not_started') countdownLabel = 'ABRE EN:';
     else if (status === 'active') countdownLabel = 'CIERRA EN:';
@@ -433,7 +525,6 @@ function renderTemporales() {
     </article>`;
   }).join("");
 
-  /* Arrancar countdowns en vivo */
   TEMPORALES.forEach(t => {
     const el = document.getElementById(`cd-${t.id}`);
     if (!el) return;
@@ -445,11 +536,9 @@ function renderTemporales() {
       const newStatus = getTempStatus(t);
       if (newStatus === 'expired') {
         clearInterval(ivId);
-        /* Re-render completo cuando expira */
         renderTemporales();
         return;
       }
-      /* Si pasó de not_started a active, re-render para mostrar botón */
       if (status === 'not_started' && newStatus === 'active') {
         clearInterval(ivId);
         renderTemporales();
@@ -461,7 +550,6 @@ function renderTemporales() {
     tempIntervals.push(ivId);
   });
 
-  /* Enroll events */
   grid.querySelectorAll("[data-enroll-temp]").forEach(btn => {
     btn.addEventListener("click", () => {
       const id = btn.dataset.enrollTemp;
@@ -586,3 +674,8 @@ getProfile();
 renderCourses();
 renderTemporales();
 observeReveal();
+
+/* ===== AUTH LISTENER — establece currentUID ===== */
+onAuthChange((user) => {
+  currentUID = user ? user.uid : null;
+});
