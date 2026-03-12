@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Primaria — EduLearn</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='64' height='64' fill='%230a1a0a'/%3E%3Crect x='22' y='10' width='20' height='14' fill='%2339FF14'/%3E%3Crect x='6' y='22' width='52' height='8' fill='%2339FF14'/%3E%3Crect x='50' y='28' width='4' height='18' fill='%23FFE000'/%3E%3Crect x='46' y='44' width='12' height='6' fill='%23FFE000'/%3E%3C/svg%3E">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet"/>
+  <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"></noscript>
+  <link rel="stylesheet" href="primaria.css"/>
+</head>
+<body>
+
+<div class="scanlines" aria-hidden="true"></div>
+<canvas id="confettiCanvas" class="confetti-bg" aria-hidden="true"></canvas>
+<div id="floatingEmojis" class="floating-emojis" aria-hidden="true"></div>
+
+<!-- LOADER -->
+<div id="loader">
+  <div class="loader-pixel">
+    <div class="ld-char">🎒</div>
+    <div class="ld-text">CARGANDO AVENTURA...</div>
+    <div class="ld-dots"><span>.</span><span>.</span><span>.</span></div>
+    <div class="ld-bar"><div class="ld-fill" id="ldFill"></div></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast" role="status" aria-live="polite"></div>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="container nav-wrap">
+    <a href="dashboard.html" class="logo" aria-label="Inicio">🎮 Edu<span>Learn</span></a>
+    <nav id="mainNav" class="nav">
+      <a href="dashboard.html">🏠 INICIO</a>
+      <a href="#catalogo">🎲 JUEGOS</a>
+      <a href="#temporales">⏰ TALLERES</a>
+      <a href="#sobre">📖 SOBRE</a>
+      <a href="secundaria.html" class="nav-pill nav-pill-blue">🔬 SECUNDARIA</a>
+      <a href="perfil.html" class="nav-pill nav-pill-gold">⭐ MI PERFIL</a>
+    </nav>
+    <div class="nav-cta">
+      <a class="btn btn-logout" href="index.html">🚪 SALIR</a>
+      <button id="burger" class="hamburger" aria-label="Menú"><span></span><span></span><span></span></button>
+    </div>
+  </div>
+</header>
+
+<!-- HERO -->
+<section id="inicio" class="hero">
+  <div class="hero-pixels" aria-hidden="true"></div>
+  <div class="container hero-inner">
+    <div class="hero-text reveal">
+      <div class="hero-level">⭐ NIVEL: PRIMARIA (1° AL 6°) ⭐</div>
+      <h1 class="hero-title" id="heroTitle">PRIMARIA<br>AVENTURAS</h1>
+      <p class="hero-desc">¡Aprender también es jugar! 🎮 Descubre Matemáticas, Lectura, Ciencias, Arte y más. ¡Gana estrellas y sube de nivel!</p>
+      <div class="hero-actions">
+        <a href="#catalogo" class="btn btn-start"><i class="fa-solid fa-play"></i> ▶ JUGAR AHORA</a>
+        <a href="#temporales" class="btn btn-workshop">⏳ TALLERES</a>
+      </div>
+      <div class="hero-power-ups">
+        <div class="pu-item">🧩<span>RETOS</span></div>
+        <div class="pu-item">🏆<span>TROFEOS</span></div>
+        <div class="pu-item">⭐<span>ESTRELLAS</span></div>
+        <div class="pu-item">🎯<span>MISIONES</span></div>
+      </div>
+    </div>
+    <div class="hero-character reveal" aria-hidden="true">
+      <div class="char-frame">
+        <img src="https://images.pexels.com/photos/8613089/pexels-photo-8613089.jpeg?auto=compress&cs=tinysrgb&w=600" alt="Niños aprendiendo">
+        <div class="char-scanline"></div>
+        <div class="char-overlay">
+          <div class="char-badge cb1">⭐ +20 XP</div>
+          <div class="char-badge cb2">🏆 NIVEL 3</div>
+          <div class="char-badge cb3">🎯 ¡CORRECTO!</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="hero-wave" aria-hidden="true"></div>
+</section>
+
+<!-- CONTROLES -->
+<section class="controls">
+  <div class="container">
+    <div class="toolbar">
+      <div class="search-group">
+        <span class="search-icon">🔍</span>
+        <input type="search" id="searchInput" placeholder="BUSCAR AVENTURAS...">
+      </div>
+      <div class="filters">
+        <select id="areaFilter"><option value="todas">🌟 TODAS LAS ÁREAS</option><option value="matematicas">🔢 MATEMÁTICAS</option><option value="lectura">📖 LECTURA</option><option value="ciencias">🔬 CIENCIAS</option><option value="ingles">🌍 INGLÉS</option><option value="arte">🎨 ARTE</option><option value="musica">🎵 MÚSICA</option><option value="computacion">💻 COMPUTACIÓN</option><option value="valores">💚 VALORES</option><option value="historia">🏛 HISTORIA</option><option value="ef">⚽ ED. FÍSICA</option></select>
+        <select id="gradoFilter"><option value="todos">⭐ TODOS LOS GRADOS</option><option value="1">🌱 GRADO 1°</option><option value="2">🌿 GRADO 2°</option><option value="3">🍀 GRADO 3°</option><option value="4">🌳 GRADO 4°</option><option value="5">🌲 GRADO 5°</option><option value="6">🏔 GRADO 6°</option></select>
+        <select id="ordenSelect"><option value="relevancia">🎯 RELEVANCIA</option><option value="nombre-asc">A → Z</option><option value="nombre-desc">Z → A</option><option value="nuevos">✨ NUEVOS</option><option value="populares">🔥 POPULARES</option><option value="duracion">⚡ DURACIÓN</option></select>
+      </div>
+      <div class="quick-actions">
+        <button id="btnFavoritos" class="btn btn-fav"><i class="fa-solid fa-heart"></i> FAVORITOS</button>
+        <button id="btnReset" class="btn btn-reset">🔄 RESET</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CATALOGO -->
+<section id="catalogo" class="catalogo">
+  <div class="container">
+    <div class="section-header">
+      <span class="sh-star">⭐</span>
+      <h2 class="section-title">🎲 CATÁLOGO DE AVENTURAS</h2>
+      <span class="sh-star">⭐</span>
+    </div>
+    <p class="section-subtitle">¡Elige tu curso favorito y empieza a aprender jugando!</p>
+    <div id="coursesGrid" class="grid" aria-live="polite"></div>
+    <div class="pagination">
+      <button id="prevPage" class="page-btn" disabled>◀</button>
+      <ul id="pageList" class="page-list"></ul>
+      <button id="nextPage" class="page-btn">▶</button>
+    </div>
+  </div>
+</section>
+
+<!-- TEMPORALES -->
+<section id="temporales" class="temporales">
+  <div class="container">
+    <div class="section-header">
+      <span class="sh-star blink-text">⚠️</span>
+      <h2 class="section-title">🕹 TALLERES ESPECIALES</h2>
+      <span class="sh-star blink-text">⚠️</span>
+    </div>
+    <p class="section-subtitle">¡Talleres con fecha de inicio y fin! Solo puedes inscribirte cuando están activos.</p>
+    <div id="tempGrid" class="temp-grid" aria-live="polite"></div>
+  </div>
+</section>
+
+<!-- SOBRE -->
+<section id="sobre" class="sobre">
+  <div class="container sobre-grid">
+    <div class="sobre-text reveal">
+      <div class="sobre-label">[ MISIÓN EDUCATIVA ]</div>
+      <h3>🎮 APRENDER JUGANDO</h3>
+      <p>En Primaria priorizamos la curiosidad, el descubrimiento y el juego como motores del aprendizaje.</p>
+      <ul class="pixel-checks">
+        <li>► Rutas por grado 1°–6°</li>
+        <li>► Mini-retos y recompensas</li>
+        <li>► Proyectos creativos</li>
+        <li>► Herramientas para familias</li>
+      </ul>
+    </div>
+    <div class="sobre-img reveal">
+      <div class="pixel-frame-green">
+        <img src="https://images.pexels.com/photos/8613086/pexels-photo-8613086.jpeg?auto=compress&cs=tinysrgb&w=800" alt="Taller creativo">
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="container footer-grid">
+    <div><a class="logo" href="#inicio">🎮 Edu<span>Learn</span></a><p class="f-desc">Primaria: aprende, juega y crece cada día.</p></div>
+    <div><h5>🎲 SECCIONES</h5><ul class="f-links"><li><a href="#catalogo">Catálogo</a></li><li><a href="#temporales">Talleres</a></li><li><a href="secundaria.html">Secundaria</a></li></ul></div>
+    <div><h5>⭐ MI ESPACIO</h5><ul class="f-links"><li><a href="perfil.html">Mi Perfil</a></li><li><a href="dashboard.html">Inicio</a></li></ul></div>
+    <div><h5>📲 SÍGUENOS</h5><div class="socials"><a href="#"><i class="fa-brands fa-facebook-f"></i></a><a href="#"><i class="fa-brands fa-x-twitter"></i></a><a href="#"><i class="fa-brands fa-instagram"></i></a><a href="#"><i class="fa-brands fa-youtube"></i></a></div></div>
+  </div>
+  <div class="subfooter"><div class="container"><p>© 2025 EduLearn · <a href="#">Privacidad</a> · <a href="#">Términos</a></p></div></div>
+</footer>
+
+<!-- MODAL -->
+<div id="courseModal" class="modal" aria-hidden="true" role="dialog" aria-modal="true">
+  <div class="modal-dialog">
+    <button class="modal-close" aria-label="Cerrar">✕</button>
+    <div class="modal-body"></div>
+  </div>
+</div>
+
+<button id="backToTop" class="back-to-top" aria-label="Volver arriba">⬆</button>
+
+<script defer src="primaria.js"></script>
+</body>
+</html>

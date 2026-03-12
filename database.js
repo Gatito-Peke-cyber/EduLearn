@@ -1,6 +1,9 @@
 /* =====================================================
-   EduLearn — database.js  v4.0
-   FIXES:
+   EduLearn — database.js  v4.1
+   FIXES v4.1:
+   - enrollCourseDB: helper centralizado para inscribir
+     desde cualquier módulo (secundaria, primaria, ingles)
+   - updateExamResultDB: actualiza nota y aprobado en Firebase
    - syncAllToLocalStorage: no sobreescribe con datos vacíos
    - getUserEnrollments: mejor manejo de Timestamps
    - Todos los errores se propagan correctamente
@@ -37,7 +40,6 @@ export async function getUserProfile(uid) {
     const snap = await getDoc(doc(db, 'usuarios', uid));
     if (!snap.exists()) return null;
     const data = snap.data();
-    // Convertir Timestamps a ISO string para compatibilidad
     return {
       uid: snap.id,
       ...data,
@@ -57,7 +59,6 @@ export async function updateUserProfile(uid, data) {
       ...data,
       updatedAt: serverTimestamp(),
     });
-    // Reflejar en localStorage
     try {
       const local = JSON.parse(localStorage.getItem('perfil_usuario') || '{}');
       localStorage.setItem('perfil_usuario', JSON.stringify({ ...local, ...data }));
@@ -109,29 +110,83 @@ export async function updateStreak(uid, racha) {
    ID de documento: "{uid}_{cursoId}"
    ═══════════════════════════════════════════════════ */
 
+/**
+ * Inscribe un curso en Firebase Y en localStorage.
+ * Esta es la función centralizada que deben usar todos
+ * los módulos (secundaria.js, primaria.js, ingles.js, etc.)
+ *
+ * @param {string} uid  - UID del usuario autenticado
+ * @param {object} curso - Objeto del curso a inscribir
+ * @returns {{ error: string|null }}
+ */
 export async function enrollCourse(uid, curso) {
   try {
     const docId = `${uid}_${curso.id}`;
     const data = {
       uid,
       cursoId:    curso.id,
-      nombre:     curso.nombre,
-      area:       curso.area   || '',
-      tipo:       curso.tipo   || 'permanente',
-      horas:      curso.horas  || 0,
-      img:        curso.img    || '',
-      link:       curso.link   || '#',
+      nombre:     curso.nombre   || curso.name  || '',
+      area:       curso.area     || '',
+      grado:      curso.grado    || '',
+      tipo:       curso.tipo     || 'permanente',
+      horas:      curso.horas    || curso.duracionHoras || 0,
+      img:        curso.img      || '',
+      link:       curso.link     || '#',
       estado:     'en_progreso',
       nota_final: null,
       aprobado:   null,
       enrolledAt: serverTimestamp(),
       updatedAt:  serverTimestamp(),
     };
-    await setDoc(doc(db, 'inscripciones', docId), data);
-    _addEnrollmentLocal({ ...data, id: curso.id, enrolledAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+    await setDoc(doc(db, 'inscripciones', docId), data, { merge: true });
+
+    // Reflejo inmediato en localStorage
+    _addEnrollmentLocal({
+      ...data,
+      id:         curso.id,
+      enrolledAt: new Date().toISOString(),
+      updatedAt:  new Date().toISOString(),
+    });
+
     return { error: null };
   } catch (err) {
     console.error('[DB] enrollCourse:', err);
+    return { error: err.message };
+  }
+}
+
+/**
+ * Actualiza nota final y estado de aprobación en Firebase Y localStorage.
+ * Usar desde ingles.js (y cualquier módulo de curso con examen).
+ *
+ * @param {string}  uid        - UID del usuario autenticado
+ * @param {string}  cursoId    - ID del curso
+ * @param {number}  nota_final - Nota numérica (e.g. 15)
+ * @param {boolean} aprobado   - true si aprobó
+ */
+export async function updateExamResult(uid, cursoId, nota_final, aprobado) {
+  try {
+    const docId = `${uid}_${cursoId}`;
+    await updateDoc(doc(db, 'inscripciones', docId), {
+      nota_final,
+      aprobado,
+      estado:    aprobado ? 'completado' : 'en_progreso',
+      updatedAt: serverTimestamp(),
+    });
+    // Reflejo en localStorage
+    try {
+      const list = JSON.parse(localStorage.getItem('inscripciones') || '[]');
+      const idx  = list.findIndex(c => c.id === cursoId || c.cursoId === cursoId);
+      if (idx >= 0) {
+        list[idx].nota_final = nota_final;
+        list[idx].aprobado   = aprobado;
+        list[idx].estado     = aprobado ? 'completado' : 'en_progreso';
+        localStorage.setItem('inscripciones', JSON.stringify(list));
+      }
+    } catch (_) {}
+    return { error: null };
+  } catch (err) {
+    console.error('[DB] updateExamResult:', err);
     return { error: err.message };
   }
 }
@@ -142,7 +197,6 @@ export async function getUserEnrollments(uid) {
     const snap = await getDocs(q);
     return snap.docs.map(d => {
       const data = d.data();
-      // FIX: conversión segura de Timestamps de Firestore
       const toISO = (val) => {
         if (!val) return null;
         if (typeof val.toDate === 'function') return val.toDate().toISOString();
@@ -159,31 +213,6 @@ export async function getUserEnrollments(uid) {
   } catch (err) {
     console.error('[DB] getUserEnrollments:', err);
     return [];
-  }
-}
-
-export async function updateExamResult(uid, cursoId, nota_final, aprobado) {
-  try {
-    const docId = `${uid}_${cursoId}`;
-    await updateDoc(doc(db, 'inscripciones', docId), {
-      nota_final,
-      aprobado,
-      estado:    aprobado ? 'completado' : 'en_progreso',
-      updatedAt: serverTimestamp(),
-    });
-    try {
-      const list = JSON.parse(localStorage.getItem('inscripciones') || '[]');
-      const idx  = list.findIndex(c => c.id === cursoId || c.cursoId === cursoId);
-      if (idx >= 0) {
-        list[idx].nota_final = nota_final;
-        list[idx].aprobado   = aprobado;
-        list[idx].estado     = aprobado ? 'completado' : 'en_progreso';
-        localStorage.setItem('inscripciones', JSON.stringify(list));
-      }
-    } catch (_) {}
-    return { error: null };
-  } catch (err) {
-    return { error: err.message };
   }
 }
 
@@ -290,8 +319,7 @@ export async function addInsignia(uid, badgeId) {
 
 /* ═══════════════════════════════════════════════════
    SINCRONIZACIÓN COMPLETA  Firebase → localStorage
-   FIX: solo sobreescribe cada clave si Firestore
-   devolvió datos reales (no objetos vacíos / null)
+   Solo sobreescribe si Firestore devolvió datos reales
    ═══════════════════════════════════════════════════ */
 export async function syncAllToLocalStorage(uid) {
   try {
@@ -303,7 +331,6 @@ export async function syncAllToLocalStorage(uid) {
       getTimelineDB(uid),
     ]);
 
-    // Perfil: solo sobreescribir si Firestore tiene datos reales
     if (profile && Object.keys(profile).length > 1) {
       const clean = { ...profile };
       delete clean.createdAt;
@@ -311,25 +338,30 @@ export async function syncAllToLocalStorage(uid) {
       localStorage.setItem('perfil_usuario', JSON.stringify(clean));
     }
 
-    // Inscripciones: guardar aunque sea array vacío (es válido)
     if (Array.isArray(enrollments)) {
-      localStorage.setItem('inscripciones', JSON.stringify(enrollments));
+      // Merge: priorizar Firebase, pero conservar datos locales que Firebase no tenga
+      try {
+        const local = JSON.parse(localStorage.getItem('inscripciones') || '[]');
+        const firebaseIds = new Set(enrollments.map(e => e.id || e.cursoId));
+        // Agregar inscripciones locales que aún no están en Firebase (puede pasar si estaba offline)
+        const onlyLocal = local.filter(l => l.id && !firebaseIds.has(l.id));
+        const merged = [...enrollments, ...onlyLocal];
+        localStorage.setItem('inscripciones', JSON.stringify(merged));
+      } catch (_) {
+        localStorage.setItem('inscripciones', JSON.stringify(enrollments));
+      }
     }
 
-    // Misiones: solo sobreescribir si hay misiones guardadas
     if (misiones && Object.keys(misiones).filter(k => k !== 'updatedAt').length > 0) {
-      // Limpiar el campo de control updatedAt antes de guardar
       const { updatedAt: _u, ...misionesClean } = misiones;
       localStorage.setItem('misiones_estado_v4', JSON.stringify(misionesClean));
     }
 
-    // Buzón: solo sobreescribir si hay mensajes leídos registrados
     if (buzon && Object.keys(buzon).filter(k => k !== 'updatedAt').length > 0) {
       const { updatedAt: _u, ...buzonClean } = buzon;
       localStorage.setItem('buzon_estado', JSON.stringify(buzonClean));
     }
 
-    // Timeline: solo sobreescribir si hay eventos reales
     if (Array.isArray(timeline) && timeline.length > 0) {
       localStorage.setItem('timeline_events', JSON.stringify(timeline));
     }
@@ -341,9 +373,6 @@ export async function syncAllToLocalStorage(uid) {
   }
 }
 
-/* ═══════════════════════════════════════════════════
-   GUARDAR PERFIL COMPLETO (desde perfil.js)
-   ═══════════════════════════════════════════════════ */
 export async function saveFullProfile(uid, profileData) {
   return updateUserProfile(uid, profileData);
 }
@@ -354,7 +383,8 @@ export async function saveFullProfile(uid, profileData) {
 function _addEnrollmentLocal(curso) {
   try {
     const list = JSON.parse(localStorage.getItem('inscripciones') || '[]');
-    if (!list.find(c => c.id === curso.id || c.cursoId === curso.cursoId)) {
+    const exists = list.find(c => c.id === curso.id || c.cursoId === curso.cursoId);
+    if (!exists) {
       list.push(curso);
       localStorage.setItem('inscripciones', JSON.stringify(list));
     }
