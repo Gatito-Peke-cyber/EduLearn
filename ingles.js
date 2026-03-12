@@ -1,18 +1,13 @@
 /* =====================================================
-   EduLearn — Inglés A1 — JS v1.2 — Firebase fix
-   CAMBIOS v1.2 (misma arquitectura que secundaria v6.3 / primaria v3.3):
-   - ELIMINADOS los import de ES module al top-level
-     (causaban SyntaxError silencioso → página en blanco)
-   - Firebase carga vía Promise.all([import(...)]).then()
-     de forma no-bloqueante: si falla, todo sigue funcionando
-   - Loader IIFE se oculta en window load con fallback 3s
-   - Todas las funciones expuestas globalmente para onclick en HTML
-   - syncXPToProfile mantiene la lógica completa de perfil + Firebase
-   =====================================================
-   CONFIGURACIÓN DE COOLDOWN:
-   Cambia FINAL_EXAM_COOLDOWN_DAYS para ajustar los días
-   de espera entre intentos del examen final.
-   Pon 0 para deshabilitar el cooldown.
+   EduLearn — Inglés A1 — JS v1.3 — Full sync fix
+   CAMBIOS v1.3:
+   - FIX 1: Nota del examen final ahora se registra
+     correctamente en perfil (localStorage + Firebase)
+   - FIX 2: Modal de resultados con scroll + botón
+     CONTINUAR siempre visible
+   - FIX 3: Progreso de lecciones, exámenes de unidad
+     y examen final se sincronizan entre dispositivos
+     via Firebase (igual que perfil/inscripciones)
    ===================================================== */
 
 /* ===== LOADER IIFE — se ejecuta INMEDIATAMENTE ===== */
@@ -31,16 +26,21 @@
 
 /* ===== FIREBASE — carga dinámica no-bloqueante ===== */
 let _auth = null;
-let _enrollCourseDB = null;
+let _db   = null;
+let _enrollCourseDB    = null;
 let _updateExamResultDB = null;
 
 Promise.all([
   import('./firebase.js'),
   import('./database.js'),
 ]).then(([fbMod, dbMod]) => {
-  _auth              = fbMod.auth            || null;
-  _enrollCourseDB    = dbMod.enrollCourse    || null;
-  _updateExamResultDB = dbMod.updateExamResult || null;
+  _auth               = fbMod.auth              || null;
+  _db                 = fbMod.db                || null;
+  _enrollCourseDB     = dbMod.enrollCourse      || dbMod.enrollCourseDB    || null;
+  _updateExamResultDB = dbMod.updateExamResult  || dbMod.updateExamResultDB || null;
+
+  /* ── Una vez que Firebase está listo, sincronizar estado del curso ── */
+  _syncCourseStateFromFirebase();
 }).catch(err => {
   console.warn('[Ingles] Firebase no disponible, modo offline:', err);
 });
@@ -49,10 +49,87 @@ function getCurrentUID() {
   return (_auth && _auth.currentUser) ? _auth.currentUser.uid : null;
 }
 
+/* =====================================================
+   SINCRONIZACIÓN DEL ESTADO DEL CURSO (cross-device)
+   Colección: "curso_estado/{uid}/cursos/{cursoId}"
+   ===================================================== */
+
+/**
+ * Guarda el estado completo del curso en Firestore.
+ * Se llama cada vez que el estado cambia (lección completada,
+ * examen de unidad, examen final).
+ */
+async function _saveCourseStateToFirebase(state) {
+  const uid = getCurrentUID();
+  if (!uid || !_db) return;
+  try {
+    const { doc, setDoc, serverTimestamp } = await import(
+      'https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js'
+    );
+    await setDoc(
+      doc(_db, 'curso_estado', uid, 'cursos', COURSE.id),
+      { ...state, updatedAt: serverTimestamp() },
+      { merge: true }
+    );
+  } catch (err) {
+    console.warn('[Ingles] saveCourseState error:', err);
+  }
+}
+
+/**
+ * Carga el estado del curso desde Firestore y lo fusiona
+ * con el localStorage (Firestore tiene prioridad si es más reciente).
+ */
+async function _syncCourseStateFromFirebase() {
+  const uid = getCurrentUID();
+  if (!uid || !_db) return;
+  try {
+    const { doc, getDoc } = await import(
+      'https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js'
+    );
+    const snap = await getDoc(doc(_db, 'curso_estado', uid, 'cursos', COURSE.id));
+    if (!snap.exists()) return;
+
+    const remote = snap.data();
+    const local  = getState();
+
+    /* Fusionar: tomar el mayor progreso entre local y remoto */
+    const merged = _mergeStates(local, remote);
+    saveState(merged);
+
+    /* Re-renderizar si ya hay vista activa */
+    if (typeof renderIndex === 'function') renderIndex();
+  } catch (err) {
+    console.warn('[Ingles] syncCourseState error:', err);
+  }
+}
+
+/**
+ * Fusiona dos estados del curso, tomando siempre el mayor progreso.
+ */
+function _mergeStates(local, remote) {
+  const merged = {
+    xp: Math.max(local.xp || 0, remote.xp || 0),
+    completedLessons:   { ...remote.completedLessons,  ...local.completedLessons  },
+    completedUnitExams: { ...remote.completedUnitExams, ...local.completedUnitExams },
+    finalExamDone:    local.finalExamDone    || remote.finalExamDone    || false,
+    finalApproved:    local.finalApproved    || remote.finalApproved    || false,
+    finalGrade: null,
+  };
+
+  /* Para la nota final, quedarse con la más alta */
+  const localGrade  = typeof local.finalGrade  === 'number' ? local.finalGrade  : -1;
+  const remoteGrade = typeof remote.finalGrade === 'number' ? remote.finalGrade : -1;
+  merged.finalGrade = Math.max(localGrade, remoteGrade);
+  if (merged.finalGrade < 0) merged.finalGrade = null;
+
+  return merged;
+}
+
 /* ===================================================
    ★ CONFIGURACIÓN FÁCIL DE CAMBIAR ★
    =================================================== */
-const FINAL_EXAM_COOLDOWN_DAYS = 3; // <- CAMBIA ESTE NÚMERO
+const FINAL_EXAM_COOLDOWN_DAYS = 3;
 
 /* ===== COURSE DATA ===== */
 const COURSE = {
@@ -134,9 +211,26 @@ function getState() {
   try { return JSON.parse(localStorage.getItem(STATE_KEY)) || defaultState(); }
   catch (e) { return defaultState(); }
 }
-function saveState(s) { localStorage.setItem(STATE_KEY, JSON.stringify(s)); }
+
+/**
+ * FIX 3: saveState ahora también persiste en Firebase
+ * para sincronización cross-device.
+ */
+function saveState(s) {
+  localStorage.setItem(STATE_KEY, JSON.stringify(s));
+  /* Guardar en Firebase de forma no-bloqueante */
+  _saveCourseStateToFirebase(s);
+}
+
 function defaultState() {
-  return { xp: 0, completedLessons: {}, completedUnitExams: {}, finalExamDone: false, finalGrade: null, finalApproved: false };
+  return {
+    xp: 0,
+    completedLessons: {},
+    completedUnitExams: {},
+    finalExamDone: false,
+    finalGrade: null,
+    finalApproved: false,
+  };
 }
 
 function isLessonUnlocked(unitIdx, lessonIdx) {
@@ -565,10 +659,11 @@ function finishExam() {
     if (finalApproved || prevApproved) state.finalApproved = true;
   }
 
+  /* FIX 3: saveState ya sincroniza a Firebase automáticamente */
   saveState(state);
 
-  /* Sincronizar con perfil + Firebase (no-bloqueante) */
-  syncXPToProfile(state.xp, state.finalApproved || false, state.finalGrade, examContext.type);
+  /* FIX 1: Sincronizar nota, perfil e inscripción con Firebase */
+  syncXPToProfile(state.xp, state.finalApproved || false, state.finalGrade, examContext.type, grade);
 
   var approvedBadge = "";
   if (examContext.type === "final") {
@@ -582,21 +677,27 @@ function finishExam() {
     cooldownNotice = '<div style="font-family:var(--font-vt);font-size:1rem;color:var(--px-orange);margin:10px 0;border:2px solid rgba(255,140,0,0.3);padding:8px 12px;">⏳ Próximo intento disponible en <strong>' + FINAL_EXAM_COOLDOWN_DAYS + ' día(s)</strong></div>';
   }
 
+  /* FIX 2: Modal con scroll y botón siempre visible */
   var rm = document.getElementById("resultModal");
   rm.innerHTML =
-    '<span class="rm-icon">' + (passed ? "🏆" : "💔") + '</span>' +
-    '<div class="rm-title ' + (passed ? "pass" : "fail") + '">' + (passed ? "¡APROBADO!" : "NO APROBADO") + '</div>' +
-    '<div class="rm-score-wrap">' +
-      '<span class="rm-score-num" style="color:' + (passed ? "var(--px-green)" : "var(--px-red)") + '">' + examScore + '/' + total + '</span>' +
-      '<div class="rm-score-label">' + pct + '% de aciertos</div>' +
+    '<div class="rm-scroll-content">' +
+      '<span class="rm-icon">' + (passed ? "🏆" : "💔") + '</span>' +
+      '<div class="rm-title ' + (passed ? "pass" : "fail") + '">' + (passed ? "¡APROBADO!" : "NO APROBADO") + '</div>' +
+      '<div class="rm-score-wrap">' +
+        '<span class="rm-score-num" style="color:' + (passed ? "var(--px-green)" : "var(--px-red)") + '">' + examScore + '/' + total + '</span>' +
+        '<div class="rm-score-label">' + pct + '% de aciertos</div>' +
+      '</div>' +
+      '<div class="rm-grade-display ' + gradeCls + '">' + gradeLabel + '</div>' +
+      '<div class="rm-grade-display ' + gradeCls + '" style="font-size:1.5rem;padding:10px 24px;">NOTA: ' + grade + '/20</div>' +
+      approvedBadge + cooldownNotice +
+      (xpGain > 0 ? '<div class="rm-xp">+' + xpGain + ' XP GANADOS ⭐</div>' : '') +
+      (!passed && examContext.type === "final" ? '<div style="font-family:var(--font-vt);color:var(--px-muted);margin:10px 0;font-size:1.1rem;">Necesitas <strong style="color:var(--px-yellow)">' + COURSE.finalPassingGrade + '/20</strong> para aprobar el curso.</div>' : '') +
+      (!passed && examContext.type !== "final" ? '<div style="font-family:var(--font-vt);color:var(--px-muted);margin:10px 0;font-size:1.1rem;">Necesitas al menos ' + COURSE.passingScore + '% para aprobar.</div>' : '') +
     '</div>' +
-    '<div class="rm-grade-display ' + gradeCls + '">' + gradeLabel + '</div>' +
-    '<div class="rm-grade-display ' + gradeCls + '" style="font-size:1.5rem;padding:10px 24px;">NOTA: ' + grade + '/20</div>' +
-    approvedBadge + cooldownNotice +
-    (xpGain > 0 ? '<div class="rm-xp">+' + xpGain + ' XP GANADOS ⭐</div>' : '') +
-    (!passed && examContext.type === "final" ? '<div style="font-family:var(--font-vt);color:var(--px-muted);margin:10px 0;font-size:1.1rem;">Necesitas <strong style="color:var(--px-yellow)">' + COURSE.finalPassingGrade + '/20</strong> para aprobar el curso.</div>' : '') +
-    (!passed && examContext.type !== "final" ? '<div style="font-family:var(--font-vt);color:var(--px-muted);margin:10px 0;font-size:1.1rem;">Necesitas al menos ' + COURSE.passingScore + '% para aprobar.</div>' : '') +
-    '<div class="rm-buttons"><button class="btn-pixel btn-next-lesson" onclick="closeResultAndContinue()">✓ CONTINUAR</button></div>';
+    /* FIX 2: Botón en footer fijo, siempre visible */
+    '<div class="rm-footer-fixed">' +
+      '<button class="btn-pixel btn-next-lesson" onclick="closeResultAndContinue()">✓ CONTINUAR</button>' +
+    '</div>';
 
   document.getElementById("resultOverlay").classList.add("show");
   if (passed) celebrate();
@@ -638,8 +739,12 @@ function findLesson(id) {
   return null;
 }
 
-/* ===== SYNC TO PROFILE + FIREBASE ===== */
-function syncXPToProfile(courseXP, finalApproved, finalGrade, examType) {
+/* =====================================================
+   FIX 1: syncXPToProfile — ahora registra la nota
+   en perfil localStorage Y en Firebase correctamente.
+   Parámetro nuevo: examGrade (la nota de este intento)
+   ===================================================== */
+function syncXPToProfile(courseXP, finalApproved, finalGrade, examType, examGrade) {
   try {
     var profileKey    = 'perfil_usuario';
     var enrollKey     = 'inscripciones';
@@ -663,11 +768,27 @@ function syncXPToProfile(courseXP, finalApproved, finalGrade, examType) {
         }
       }
       localStorage.setItem(profileKey, JSON.stringify(p));
+
+      /* FIX 1: Subir XP actualizado del perfil a Firebase */
+      if (uid && delta > 0) {
+        Promise.resolve().then(function() {
+          return import('./database.js');
+        }).then(function(dbMod) {
+          var updateFn = dbMod.updateUserProfile || dbMod.saveFullProfile;
+          if (updateFn) {
+            updateFn(uid, { xp: p.xp, completos: p.completos || 0 }).catch(function(err) {
+              console.warn('[Ingles] updateProfile Firebase error:', err);
+            });
+          }
+        }).catch(function(err) {
+          console.warn('[Ingles] import database error:', err);
+        });
+      }
     }
 
     /* ── 2. Inscripción en localStorage ── */
     var enrollments = JSON.parse(localStorage.getItem(enrollKey) || '[]');
-    var idx = enrollments.findIndex(function(e) { return e.id === COURSE.id; });
+    var idx = enrollments.findIndex(function(e) { return e.id === COURSE.id || e.cursoId === COURSE.id; });
     if (idx === -1) idx = enrollments.findIndex(function(e) { return e.nombre && e.nombre.toLowerCase().includes('inglés'); });
 
     if (idx === -1) {
@@ -682,11 +803,14 @@ function syncXPToProfile(courseXP, finalApproved, finalGrade, examType) {
       idx = enrollments.length - 1;
     }
 
+    /* FIX 1: Actualizar nota en la inscripción local */
     if (examType === 'final') {
-      if (typeof finalGrade === 'number') {
+      var gradeToSave = (typeof finalGrade === 'number') ? finalGrade : examGrade;
+      if (typeof gradeToSave === 'number') {
         var prevNota = enrollments[idx].nota_final;
-        if (typeof prevNota !== 'number' || finalGrade > prevNota) {
-          enrollments[idx].nota_final = finalGrade;
+        /* Guardar siempre la nota más alta */
+        if (typeof prevNota !== 'number' || gradeToSave > prevNota) {
+          enrollments[idx].nota_final = gradeToSave;
         }
       }
       if (finalApproved) {
@@ -694,22 +818,31 @@ function syncXPToProfile(courseXP, finalApproved, finalGrade, examType) {
         enrollments[idx].estado   = 'completado';
         if (!enrollments[idx].horas || enrollments[idx].horas < 10) enrollments[idx].horas = 10;
       } else if (enrollments[idx].aprobado !== true) {
+        /* Solo marcar como no aprobado si aún no fue aprobado antes */
         enrollments[idx].aprobado = false;
         enrollments[idx].estado   = 'en_progreso';
       }
     }
     localStorage.setItem(enrollKey, JSON.stringify(enrollments));
 
-    /* ── 3. Firebase (no-bloqueante, solo si disponible) ── */
-    if (uid && _enrollCourseDB) {
-      Promise.resolve(_enrollCourseDB(uid, enrollments[idx])).catch(function(err) {
-        console.warn('[Ingles] enrollCourse Firebase error:', err);
-      });
-    }
-    if (uid && _updateExamResultDB && examType === 'final' && typeof finalGrade === 'number') {
-      Promise.resolve(_updateExamResultDB(uid, COURSE.id, finalGrade, finalApproved || false)).catch(function(err) {
-        console.warn('[Ingles] updateExamResult Firebase error:', err);
-      });
+    /* ── 3. Firebase: inscripción + nota (no-bloqueante) ── */
+    if (uid) {
+      /* Subir inscripción */
+      if (_enrollCourseDB) {
+        Promise.resolve(_enrollCourseDB(uid, enrollments[idx])).catch(function(err) {
+          console.warn('[Ingles] enrollCourse Firebase error:', err);
+        });
+      }
+      /* FIX 1: Subir nota final a Firebase usando updateExamResultDB */
+      if (_updateExamResultDB && examType === 'final') {
+        var notaFinal   = enrollments[idx].nota_final;
+        var aprobadoFinal = enrollments[idx].aprobado === true;
+        if (typeof notaFinal === 'number') {
+          Promise.resolve(_updateExamResultDB(uid, COURSE.id, notaFinal, aprobadoFinal)).catch(function(err) {
+            console.warn('[Ingles] updateExamResult Firebase error:', err);
+          });
+        }
+      }
     }
 
   } catch (e) {
@@ -791,7 +924,7 @@ function createStars() {
   }
 }
 
-/* ===== EXPOSE GLOBALS (requerido porque el script NO es type=module) ===== */
+/* ===== EXPOSE GLOBALS ===== */
 window.showLesson                    = showLesson;
 window.showUnitExam                  = showUnitExam;
 window.showFinalExam                 = showFinalExam;
@@ -804,6 +937,7 @@ window.closeCooldownModal            = closeCooldownModal;
 window.closeResult                   = closeResult;
 window.closeResultAndContinue        = closeResultAndContinue;
 window.showToast                     = showToast;
+window.renderIndex                   = renderIndex;
 
 /* ===== INIT ===== */
 createStars();
