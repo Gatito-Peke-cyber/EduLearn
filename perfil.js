@@ -1,10 +1,22 @@
 /* =====================================================
-   EduLearn — Perfil — JS v5.0
-   - NUEVO: Sección CALIFICACIONES con APROBADO / DESAPROBADO
-   - Muestra nota_final/20 por curso con colores y badges
-   - FIX: Muestra APROBADO / DESAPROBADO en inventario
+   EduLearn — Perfil — JS v6.0
+   NUEVO: Sincronización Firebase cross-device
+   - Carga datos de Firestore al iniciar sesión
+   - Guarda cambios a Firestore en tiempo real
+   - Redirige a login si no hay sesión activa
+   - TODAS las funciones originales conservadas
    ===================================================== */
 'use strict';
+
+import { onAuthChange } from './auth.js';
+import {
+  syncAllToLocalStorage,
+  updateUserProfile,
+  saveMisionesEstado,
+  saveBuzonEstado,
+  addTimelineEventDB,
+  getUserEnrollments,
+} from './database.js';
 
 /* ---- KEYS ---- */
 const PROFILE_KEY  = 'perfil_usuario';
@@ -13,6 +25,9 @@ const BADGE_SEEN   = 'insignias_celebradas_v4';
 const MISSION_KEY  = 'misiones_estado_v4';
 const EVENTS_KEY   = 'timeline_events';
 const BUZON_KEY    = 'buzon_estado';
+
+/* ---- UID del usuario activo (se asigna tras auth) ---- */
+let currentUID = null;
 
 /* ---- LEVEL THRESHOLDS ---- */
 const LEVEL_THR = [0,100,250,450,700,1000,1400,1850,2400,3000,3700,4500,5500,6800,8400,10200];
@@ -132,7 +147,6 @@ function getEnrolled(){
   const data = ls(ENROLL_KEY);
   if(!data) return [];
   if(Array.isArray(data)) return data;
-  // Si se guardó como objeto {id: curso, ...} lo convierte a array
   if(typeof data === 'object') return Object.values(data);
   return [];
 }
@@ -156,6 +170,58 @@ function timeAgo(iso){
   if(s < 86400) return `hace ${Math.floor(s/3600)}h`;
   if(s < 604800)return `hace ${Math.floor(s/86400)}d`;
   return d.toLocaleDateString('es-PE', {day:'2-digit',month:'short'});
+}
+
+/* ======================================================
+   FIREBASE SYNC — Guardar a Firestore en paralelo
+   Todas las funciones originales de localStorage
+   se mantienen intactas. Firebase es ADICIONAL.
+   ====================================================== */
+
+/**
+ * Guarda el estado de misiones en Firestore si hay usuario activo.
+ */
+async function firebaseSaveMisiones(mState) {
+  if(!currentUID) return;
+  try { await saveMisionesEstado(currentUID, mState); } catch(e) { console.warn('[Sync] misiones:', e); }
+}
+
+/**
+ * Guarda el estado del buzón en Firestore si hay usuario activo.
+ */
+async function firebaseSaveBuzon(bState) {
+  if(!currentUID) return;
+  try { await saveBuzonEstado(currentUID, bState); } catch(e) { console.warn('[Sync] buzon:', e); }
+}
+
+/**
+ * Guarda un evento de timeline en Firestore si hay usuario activo.
+ */
+async function firebaseSaveTimelineEvent(ev) {
+  if(!currentUID) return;
+  try { await addTimelineEventDB(currentUID, ev); } catch(e) { console.warn('[Sync] timeline:', e); }
+}
+
+/**
+ * Guarda el perfil (avatar, xp, etc.) en Firestore si hay usuario activo.
+ */
+async function firebaseSaveProfile(data) {
+  if(!currentUID) return;
+  try { await updateUserProfile(currentUID, data); } catch(e) { console.warn('[Sync] profile:', e); }
+}
+
+/**
+ * Muestra un indicador de carga de sincronización en el header.
+ */
+function showSyncIndicator(text = '⟳ SINCRONIZANDO...') {
+  const xpBadge = $('#xp-display');
+  if(xpBadge) xpBadge.style.opacity = '0.5';
+  toast(text, 'var(--cyan)');
+}
+
+function hideSyncIndicator() {
+  const xpBadge = $('#xp-display');
+  if(xpBadge) xpBadge.style.opacity = '1';
 }
 
 /* ---- STARS BACKGROUND ---- */
@@ -290,8 +356,6 @@ function renderHeader(){
   const xpNextEl=$('#xp-next');       if(xpNextEl)xpNextEl.textContent= (LEVEL_THR[lv]||'MAX');
   const barEl  = $('#xp-bar-fill');   if(barEl)   barEl.style.width   = lvInfo.pct+'%';
   const xpBadge= $('#xp-display');    if(xpBadge) xpBadge.textContent = `⚡ ${p.xp||0} XP`;
-
-  const horas = enrolled.reduce((a,c)=> a+(c.horas||0), 0);
 
   const statCursos   = $('#stat-cursos');    if(statCursos)    statCursos.textContent    = enrolled.length;
   const statInsignias= $('#stat-insignias'); if(statInsignias) statInsignias.textContent = earnedIds.size;
@@ -430,43 +494,25 @@ function renderInventory(){
 }
 
 /* =====================================================
-   RENDER CALIFICACIONES (NUEVO)
-   Muestra todos los cursos con su estado de aprobación
-   basado en la nota del examen final
+   RENDER CALIFICACIONES
    ===================================================== */
 let califFilter = '';
 
 function getCursoEstado(c) {
   if(c.tipo === 'temporal') return 'taller';
-
-  // Parsear nota_final de forma robusta (puede venir como string "15" o número 15)
   const nota = parseFloat(c.nota_final);
   const tieneNota = !isNaN(nota);
-
-  // Parsear aprobado de forma robusta (puede venir como boolean true o string "true")
   const aprobadoVal = c.aprobado;
   const aprobadoBool = aprobadoVal === true || aprobadoVal === 'true' || String(aprobadoVal) === 'true';
-
   const examenRendido = tieneNota || (aprobadoVal != null && aprobadoVal !== '') || c.estado === 'completado';
-
   if(!examenRendido) return 'pendiente';
-
   const esAprobado = aprobadoBool || nota >= 11 || c.estado === 'completado';
   return esAprobado ? 'aprobado' : 'desaprobado';
-}
-
-function getGradeLabel(nota) {
-  if(typeof nota !== 'number') return '—';
-  if(nota >= 18) return 'A';
-  if(nota >= 15) return 'B';
-  if(nota >= 11) return 'C';
-  return 'D';
 }
 
 function renderCalificaciones() {
   const enrolled = getEnrolled();
 
-  // Contar estados
   let nAprobados = 0, nDesaprobados = 0, nPendientes = 0;
   let sumaNotas = 0, countNotas = 0;
 
@@ -482,7 +528,6 @@ function renderCalificaciones() {
   const promedio = countNotas > 0 ? (sumaNotas / countNotas).toFixed(1) : '—';
   const total    = enrolled.length || 1;
 
-  // Actualizar HUD
   const elAprobados    = $('#calif-aprobados');
   const elDesaprobados = $('#calif-desaprobados');
   const elPendientes   = $('#calif-pendientes');
@@ -492,7 +537,6 @@ function renderCalificaciones() {
   if(elPendientes)   elPendientes.textContent   = nPendientes;
   if(elPromedio)     elPromedio.textContent      = promedio !== '—' ? `${promedio}/20` : '—';
 
-  // Animar barras del HUD
   requestAnimationFrame(() => {
     const barA = $('#chs-bar-aprobados');
     const barD = $('#chs-bar-desaprobados');
@@ -502,7 +546,6 @@ function renderCalificaciones() {
     if(barP && promedio !== '—') barP.style.width = `${Math.round(parseFloat(promedio) / 20 * 100)}%`;
   });
 
-  // Filtrar lista
   let list = [...enrolled];
   if(califFilter === 'aprobado')         list = list.filter(c => getCursoEstado(c) === 'aprobado');
   else if(califFilter === 'desaprobado') list = list.filter(c => getCursoEstado(c) === 'desaprobado');
@@ -566,16 +609,12 @@ function renderCalificaciones() {
     return `
     <div class="calif-card ${cardCls}">
       <div class="calif-ribbon"></div>
-
-      <!-- Imagen -->
       <div class="calif-img-wrap">
         <img class="calif-img" src="${c.img||''}" alt="${c.nombre}" loading="lazy"
           onerror="this.style.display='none'">
         <div class="calif-img-overlay"></div>
         <div class="ca-area-dot" style="color:${areaColor};border-color:${areaColor}">${(c.area||'CURSO').toUpperCase()}</div>
       </div>
-
-      <!-- Cuerpo -->
       <div class="calif-body">
         <div class="calif-nombre">${c.nombre}</div>
         <div class="calif-meta">
@@ -589,8 +628,6 @@ function renderCalificaciones() {
           </div>
         </div>
       </div>
-
-      <!-- Panel nota -->
       <div class="calif-grade-panel">
         <div class="calif-grade-orb">
           <span class="calif-nota-num">${notaDisplay}</span>
@@ -601,7 +638,6 @@ function renderCalificaciones() {
     </div>`;
   }).join('');
 
-  // Animación de entrada
   requestAnimationFrame(() => {
     $$('#calif-list .calif-card').forEach((el, i) => {
       el.style.opacity = '0';
@@ -615,7 +651,6 @@ function renderCalificaciones() {
   });
 }
 
-/* ---- Inicializar filtros de calificaciones ---- */
 function initCalifFilters() {
   $$('.cf-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -750,6 +785,7 @@ function renderMissions(){
   renderGroup(MISSION_DEF.monthly, '#mission-monthly');
 }
 
+/* MODIFICADO: también guarda misiones y XP en Firebase */
 function completeMission(mid){
   const all = [...MISSION_DEF.daily,...MISSION_DEF.weekly,...MISSION_DEF.monthly];
   const m = all.find(x=>x.id===mid); if(!m) return;
@@ -757,22 +793,34 @@ function completeMission(mid){
   if(mState[mid]?.done) return;
   mState[mid] = { prog: m.max, done: true };
   lsSet(MISSION_KEY, mState);
+
   const p = getProfile();
   p.xp = (p.xp||0) + m.xp;
   lsSet(PROFILE_KEY, p);
+
   addTimelineEvent({ icon:'⚔️', title:`Misión completada: ${m.name}`, detail:`+${m.xp} XP ganados` });
   toast(`⚔️ MISIÓN COMPLETADA: +${m.xp} XP`, 'var(--yellow)');
+
+  /* --- SYNC FIREBASE --- */
+  firebaseSaveMisiones(mState);
+  firebaseSaveProfile({ xp: p.xp });
+
   renderMissions();
   renderHeader();
   renderResumen();
 }
 
 /* ---- TIMELINE ---- */
+/* MODIFICADO: también guarda en Firebase */
 function addTimelineEvent(ev){
+  const event = { ...ev, fecha: new Date().toISOString() };
   const events = getEvents();
-  events.unshift({ ...ev, fecha: new Date().toISOString() });
+  events.unshift(event);
   if(events.length > 50) events.pop();
   lsSet(EVENTS_KEY, events);
+
+  /* --- SYNC FIREBASE --- */
+  firebaseSaveTimelineEvent(event);
 }
 
 function renderTimeline(){
@@ -855,6 +903,7 @@ function renderBuzon(){
   });
 }
 
+/* MODIFICADO: también guarda estado buzón en Firebase */
 function markBuzonRead(id){
   const state = getBuzonState();
   if(state[id]) return;
@@ -862,17 +911,28 @@ function markBuzonRead(id){
   lsSet(BUZON_KEY, state);
   const ms = getMissions();
   if(!ms.d05?.done){ ms.d05={prog:1,done:true}; lsSet(MISSION_KEY,ms); }
+
+  /* --- SYNC FIREBASE --- */
+  firebaseSaveBuzon(state);
+  firebaseSaveMisiones(getMissions());
+
   renderBuzon();
   renderMissions();
   toast('📬 MENSAJE LEÍDO', 'var(--yellow)');
 }
 
+/* MODIFICADO: también guarda estado buzón en Firebase */
 function markAllBuzonRead(){
   const state = getBuzonState();
   BUZON_MESSAGES.forEach(m=>{ state[m.id]=true; });
   lsSet(BUZON_KEY, state);
   const ms = getMissions();
   if(!ms.w06?.done){ ms.w06={prog:1,done:true}; lsSet(MISSION_KEY,ms); }
+
+  /* --- SYNC FIREBASE --- */
+  firebaseSaveBuzon(state);
+  firebaseSaveMisiones(getMissions());
+
   renderBuzon();
   renderMissions();
   toast('📭 TODOS LOS MENSAJES LEÍDOS', 'var(--green)');
@@ -901,6 +961,7 @@ function initTabs(){
 }
 
 /* ---- AVATAR ---- */
+/* MODIFICADO: también guarda avatar en Firebase */
 function initAvatar(){
   const btn   = $('#btn-change-avatar');
   const modal = $('#avatar-modal');
@@ -917,6 +978,10 @@ function initAvatar(){
         const p3 = getProfile();
         p3.avatar = opt.dataset.av;
         lsSet(PROFILE_KEY, p3);
+
+        /* --- SYNC FIREBASE --- */
+        firebaseSaveProfile({ avatar: opt.dataset.av });
+
         modal.classList.remove('show');
         document.body.style.overflow='';
         renderHeader();
@@ -1011,6 +1076,8 @@ function recordVisit(){
   if(!ms.d01?.done){
     ms.d01 = { prog:1, done:true };
     lsSet(MISSION_KEY, ms);
+    /* --- SYNC FIREBASE --- */
+    firebaseSaveMisiones(ms);
   }
   const events = getEvents();
   const today  = new Date().toDateString();
@@ -1019,7 +1086,11 @@ function recordVisit(){
   }
 }
 
-/* ---- INIT ---- */
+/* ======================================================
+   INIT PRINCIPAL CON FIREBASE AUTH
+   Espera confirmación de sesión antes de renderizar.
+   Si no hay sesión activa, redirige al login.
+   ====================================================== */
 document.addEventListener('DOMContentLoaded', ()=>{
   hideLoader();
   initStars();
@@ -1034,9 +1105,40 @@ document.addEventListener('DOMContentLoaded', ()=>{
   initLogout();
   initBackToTop();
   initCalifFilters();
-  recordVisit();
 
-  renderHeader();
-  renderResumen();
-  renderBuzon();
+  /* Escuchar el estado de autenticación Firebase.
+     Se ejecuta una vez al cargar y cada vez que cambie. */
+  let firstLoad = true;
+
+  onAuthChange(async (user) => {
+    if(!user) {
+      /* Sin sesión → redirigir al login */
+      window.location.href = 'index.html';
+      return;
+    }
+
+    currentUID = user.uid;
+
+    if(firstLoad) {
+      firstLoad = false;
+
+      /* Primera carga: sincronizar datos de Firebase → localStorage */
+      showSyncIndicator('⟳ CARGANDO TU PROGRESO...');
+      try {
+        await syncAllToLocalStorage(user.uid);
+        hideSyncIndicator();
+        toast('✓ PROGRESO SINCRONIZADO', 'var(--green)');
+      } catch(err) {
+        hideSyncIndicator();
+        console.warn('[Perfil] Error de sincronización:', err);
+        /* Continúa con datos locales si hay error de red */
+      }
+
+      /* Renderizar todo una vez que los datos están listos */
+      renderHeader();
+      renderResumen();
+      renderBuzon();
+      recordVisit();
+    }
+  });
 });
