@@ -17,15 +17,40 @@ function getCurrentUID() {
 }
 
 /* ===== LOADER ===== */
-window.addEventListener("load", () => {
+function runLoader() {
+  const loaderEl = document.getElementById("loader");
   const ld = document.getElementById("ldFill");
+  if (!loaderEl) return;
   let pct = 0;
   const t = setInterval(() => {
     pct = Math.min(100, pct + 20);
     if (ld) ld.style.width = pct + "%";
-    if (pct >= 100) { clearInterval(t); setTimeout(() => { document.getElementById("loader").style.display = "none"; }, 200); }
+    if (pct >= 100) {
+      clearInterval(t);
+      setTimeout(() => {
+        loaderEl.style.transition = "opacity 0.4s";
+        loaderEl.style.opacity = "0";
+        setTimeout(() => { loaderEl.style.display = "none"; }, 400);
+      }, 200);
+    }
   }, 80);
-});
+}
+
+// En módulos ES el evento 'load' puede haber disparado ya; usamos ambos paths
+if (document.readyState === "complete") {
+  runLoader();
+} else {
+  window.addEventListener("load", runLoader);
+}
+// Fallback de seguridad: si en 3s sigue visible, ocultamos de todas formas
+setTimeout(() => {
+  const loaderEl = document.getElementById("loader");
+  if (loaderEl && loaderEl.style.display !== "none") {
+    loaderEl.style.transition = "opacity 0.4s";
+    loaderEl.style.opacity = "0";
+    setTimeout(() => { loaderEl.style.display = "none"; }, 400);
+  }
+}, 3000);
 
 /* ===== STARS ===== */
 function createStars() {
@@ -639,7 +664,16 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") closeModal()
 function observeReveal() { document.querySelectorAll(".reveal:not(.visible)").forEach(el => io.observe(el)); }
 
 /* ===== INIT ===== */
-getProfile();
-renderCourses();
-renderTemporales();
-observeReveal();
+function initAll() {
+  getProfile();
+  renderCourses();
+  renderTemporales();
+  observeReveal();
+}
+
+// En módulos ES, el DOM puede ya estar listo cuando se ejecuta el script
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initAll);
+} else {
+  initAll();
+}

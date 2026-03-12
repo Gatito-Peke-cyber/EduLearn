@@ -763,6 +763,16 @@ function hideLoader(){
   }, 80);
 }
 
+// Fallback de seguridad: si en 3s sigue visible, forzar ocultar
+setTimeout(() => {
+  const loader = $('#loader');
+  if (loader && loader.style.display !== 'none' && loader.style.opacity !== '0') {
+    loader.style.transition = 'opacity 0.4s';
+    loader.style.opacity = '0';
+    setTimeout(() => { loader.style.display = 'none'; }, 400);
+  }
+}, 3000);
+
 /* ---- FLOATING EMOJIS ---- */
 function generateEmojis(){
   const container = $('#floatingEmojis');
@@ -810,7 +820,7 @@ function initReveal(){
 }
 
 /* ---- INIT ---- */
-document.addEventListener('DOMContentLoaded', ()=>{
+function initAll(){
   hideLoader();
   generateStars();
   generateEmojis();
@@ -820,4 +830,11 @@ document.addEventListener('DOMContentLoaded', ()=>{
   renderTemporales();
   initBackToTop();
   initReveal();
-});
+}
+
+// En módulos ES, DOMContentLoaded puede haber disparado ya antes de que el script se ejecute
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initAll);
+} else {
+  initAll();
+}
