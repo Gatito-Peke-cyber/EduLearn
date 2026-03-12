@@ -129,7 +129,7 @@ function _mergeStates(local, remote) {
 /* ===================================================
    ★ CONFIGURACIÓN FÁCIL DE CAMBIAR ★
    =================================================== */
-const FINAL_EXAM_COOLDOWN_DAYS = 3;
+const FINAL_EXAM_COOLDOWN_DAYS = 0;
 
 /* ===== COURSE DATA ===== */
 const COURSE = {
