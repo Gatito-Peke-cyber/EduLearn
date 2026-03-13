@@ -1,14 +1,14 @@
 /* =====================================================
-   EduLearn — database.js  v4.3
-   FIXES v4.3:
-   - enrollCourse: ya NO resetea nota_final/aprobado para
-     documentos existentes (usaba setDoc+merge con null,
-     sobreescribiendo notas reales → corregido)
-   - updateExamResult: cambiado de updateDoc → setDoc
-     con merge:true para evitar el error "No document
-     to update" cuando el documento aún no existe
-   - Ambos fixes resuelven el race condition que impedía
-     que la nota del examen final se guardara en Firebase
+   EduLearn — database.js  v4.4
+   FIXES v4.4:
+   - NUEVO: _deduplicateEnrollments() — elimina cursos
+     duplicados que aparecen cuando un mismo curso se
+     inscribió desde dos rutas distintas (catálogo vs
+     página del curso), generando dos doc IDs distintos
+     en Firestore pero para el mismo curso.
+   - getUserEnrollments: aplica deduplicación al retornar
+   - syncAllToLocalStorage: aplica deduplicación antes de
+     escribir en localStorage (fuente principal del bug)
    ===================================================== */
 
 import { db } from './firebase.js';
@@ -141,9 +141,7 @@ export async function enrollCourse(uid, curso) {
       updatedAt: serverTimestamp(),
     };
 
-    /* Solo añadir campos de estado/nota en documentos NUEVOS.
-       Para documentos existentes, setDoc+merge NO incluirá
-       nota_final ni aprobado → no los sobreescribirá. */
+    /* Solo añadir campos de estado/nota en documentos NUEVOS. */
     if (isNew) {
       Object.assign(baseData, {
         estado:     'en_progreso',
@@ -169,17 +167,13 @@ export async function enrollCourse(uid, curso) {
 export const enrollCourseDB = enrollCourse;
 
 /* ═══════════════════════════════════════════════════
-   FIX v4.3: updateExamResult usa setDoc+merge en lugar
-   de updateDoc para evitar el error "document not found"
-   cuando el documento aún no ha sido creado por enrollCourse.
+   FIX v4.3: updateExamResult usa setDoc+merge
    ═══════════════════════════════════════════════════ */
 export async function updateExamResult(uid, cursoId, nota_final, aprobado) {
   try {
     const docId  = `${uid}_${cursoId}`;
     const docRef = doc(db, 'inscripciones', docId);
 
-    /* setDoc con merge:true crea el documento si no existe
-       y actualiza solo los campos indicados si ya existe */
     await setDoc(docRef, {
       uid,
       cursoId,
@@ -194,7 +188,6 @@ export async function updateExamResult(uid, cursoId, nota_final, aprobado) {
       const list = JSON.parse(localStorage.getItem('inscripciones') || '[]');
       const idx  = list.findIndex(c => c.id === cursoId || c.cursoId === cursoId);
       if (idx >= 0) {
-        /* Solo actualizar la nota si la nueva es mayor o igual */
         const prevNota = list[idx].nota_final;
         if (typeof prevNota !== 'number' || nota_final >= prevNota) {
           list[idx].nota_final = nota_final;
@@ -217,11 +210,18 @@ export async function updateExamResult(uid, cursoId, nota_final, aprobado) {
 /* Alias para compatibilidad */
 export const updateExamResultDB = updateExamResult;
 
+/* ═══════════════════════════════════════════════════
+   FIX v4.4: getUserEnrollments aplica deduplicación.
+   Cuando un mismo curso fue inscrito desde dos rutas
+   distintas (generando dos doc IDs en Firestore), el
+   query devolvía dos entradas. Ahora se fusionan en una,
+   conservando el mejor estado (nota más alta, completado).
+   ═══════════════════════════════════════════════════ */
 export async function getUserEnrollments(uid) {
   try {
     const q    = query(collection(db, 'inscripciones'), where('uid', '==', uid));
     const snap = await getDocs(q);
-    return snap.docs.map(d => {
+    const raw  = snap.docs.map(d => {
       const data = d.data();
       const toISO = (val) => {
         if (!val) return null;
@@ -236,6 +236,9 @@ export async function getUserEnrollments(uid) {
         updatedAt:  toISO(data.updatedAt),
       };
     });
+
+    /* ── FIX v4.4: eliminar duplicados antes de retornar ── */
+    return _deduplicateEnrollments(raw);
   } catch (err) {
     console.error('[DB] getUserEnrollments:', err);
     return [];
@@ -346,12 +349,16 @@ export async function addInsignia(uid, badgeId) {
 /* ═══════════════════════════════════════════════════
    SINCRONIZACIÓN COMPLETA  Firebase → localStorage
    Firebase es la FUENTE DE VERDAD.
+
+   FIX v4.4: aplica _deduplicateEnrollments antes de
+   escribir en localStorage para que el perfil no muestre
+   el mismo curso dos veces.
    ═══════════════════════════════════════════════════ */
 export async function syncAllToLocalStorage(uid) {
   try {
     const [profile, enrollments, misiones, buzon, timeline] = await Promise.all([
       getUserProfile(uid),
-      getUserEnrollments(uid),
+      getUserEnrollments(uid),   // ya viene deduplicado (fix v4.4)
       getMisionesEstado(uid),
       getBuzonEstado(uid),
       getTimelineDB(uid),
@@ -367,7 +374,22 @@ export async function syncAllToLocalStorage(uid) {
 
     /* ── INSCRIPCIONES ── */
     if (Array.isArray(enrollments) && enrollments.length > 0) {
-      localStorage.setItem('inscripciones', JSON.stringify(enrollments));
+      /* FIX v4.4: deduplicar también contra lo que ya hay en
+         localStorage (puede haber entradas de otras páginas
+         que aún no se subieron a Firebase) */
+      let merged = enrollments;
+      try {
+        const localRaw = localStorage.getItem('inscripciones');
+        if (localRaw) {
+          const localList = JSON.parse(localRaw);
+          if (Array.isArray(localList) && localList.length > 0) {
+            /* Firebase tiene prioridad: va primero en el merge */
+            merged = _deduplicateEnrollments([...enrollments, ...localList]);
+          }
+        }
+      } catch (_) {}
+      localStorage.setItem('inscripciones', JSON.stringify(merged));
+
     } else if (enrollments.length === 0) {
       const localRaw = localStorage.getItem('inscripciones');
       if (localRaw) {
@@ -419,6 +441,55 @@ export async function saveFullProfile(uid, profileData) {
    ═══════════════════════════════════════════════════ */
 
 /**
+ * FIX v4.4 — Elimina entradas duplicadas de un arreglo
+ * de inscripciones.
+ *
+ * Lógica:
+ *  · La clave de deduplicación es cursoId › id › nombre (normalizado).
+ *  · Cuando hay dos entradas con la misma clave, se FUSIONAN
+ *    conservando el mejor estado:
+ *      - nota_final más alta
+ *      - aprobado = true si alguna lo tiene
+ *      - estado = 'completado' si alguna lo tiene
+ *  · El arreglo de entrada debe tener los elementos con mayor
+ *    prioridad (Firebase) al principio para que el merge les dé
+ *    preferencia en los campos de metadata (nombre, área, etc.).
+ */
+function _deduplicateEnrollments(list) {
+  const seen = new Map();
+
+  for (const item of list) {
+    /* Clave: cursoId tiene prioridad sobre id, luego nombre */
+    const rawKey = item.cursoId || item.id || item.nombre || '';
+    const key    = String(rawKey).toLowerCase().trim();
+    if (!key) continue;
+
+    if (!seen.has(key)) {
+      seen.set(key, { ...item });
+    } else {
+      const prev = seen.get(key);
+
+      /* nota_final: conservar la más alta */
+      const prevNota = typeof prev.nota_final === 'number' ? prev.nota_final : -1;
+      const itemNota = typeof item.nota_final === 'number' ? item.nota_final : -1;
+      if (itemNota > prevNota) prev.nota_final = item.nota_final;
+
+      /* aprobado: conservar true si alguno lo tiene */
+      if (item.aprobado === true) prev.aprobado = true;
+
+      /* estado: conservar 'completado' si alguno lo tiene */
+      if (item.estado === 'completado') prev.estado = 'completado';
+
+      /* ids: preservar si faltan */
+      if (!prev.cursoId && item.cursoId) prev.cursoId = item.cursoId;
+      if (!prev.id && item.id)           prev.id      = item.id;
+    }
+  }
+
+  return Array.from(seen.values());
+}
+
+/**
  * Actualiza localStorage para la inscripción indicada.
  * Para documentos nuevos añade la entrada; para existentes
  * solo actualiza campos no-resultado para no pisar la nota.
@@ -429,16 +500,12 @@ function _updateEnrollmentLocal(cursoId, data, isNew) {
     const idx  = list.findIndex(c => c.id === cursoId || c.cursoId === cursoId);
 
     if (isNew || idx === -1) {
-      /* Nuevo: añadir entrada completa */
       const entry = {
         ...data,
         id:         cursoId,
         enrolledAt: new Date().toISOString(),
         updatedAt:  new Date().toISOString(),
       };
-      /* Eliminar timestamps de Firestore no serializables */
-      delete entry.enrolledAt;
-      entry.enrolledAt = new Date().toISOString();
       if (idx === -1) {
         list.push(entry);
       } else {
@@ -459,7 +526,8 @@ function _updateEnrollmentLocal(cursoId, data, isNew) {
       Object.assign(list[idx], keep);
     }
 
-    localStorage.setItem('inscripciones', JSON.stringify(list));
+    /* FIX v4.4: deduplicar antes de guardar */
+    localStorage.setItem('inscripciones', JSON.stringify(_deduplicateEnrollments(list)));
   } catch (_) {}
 }
 

@@ -1,14 +1,9 @@
 /* =====================================================
-   EduLearn — Inglés A1 — JS v1.4 — Cross-device sync fix
-   CAMBIOS v1.4:
-   - FIX 1: onAuthStateChanged para esperar sesión antes
-     de sincronizar (evita getCurrentUID() = null al cargar)
-   - FIX 2: syncXPToProfile ahora es async y secuencial:
-     primero enrollCourse, luego updateExamResult (evita
-     race condition que causaba error "document not found")
-   - FIX 3: Firebase calls encadenados correctamente
-   - FIX 4: Nota final siempre se registra en perfil
-     e inscripciones (local + Firebase)
+   EduLearn — Inglés A1 — JS v1.5 — Fix duplicados
+   CAMBIOS v1.5:
+   - FIX DUPLICADOS: _deduplicateLocal() evita que el mismo
+     curso aparezca dos veces en Mis Cursos / Calificaciones.
+     Se aplica en syncXPToProfile antes de guardar en localStorage.
    ===================================================== */
 
 /* ===== LOADER IIFE — se ejecuta INMEDIATAMENTE ===== */
@@ -42,19 +37,13 @@ Promise.all([
   _updateExamResultDB  = dbMod.updateExamResult  || dbMod.updateExamResultDB || null;
   _updateUserProfileDB = dbMod.updateUserProfile || dbMod.saveFullProfile    || null;
 
-  /* ── FIX 1: Esperar a que Firebase confirme la sesión
-     antes de intentar sincronizar el estado del curso.
-     onAuthStateChanged se dispara inmediatamente con el
-     estado actual, por lo que no hay delay perceptible. ── */
   if (_auth) {
     import('https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js')
       .then(function(authMod) {
-        /* Suscribirse una sola vez al estado de autenticación */
         var unsub = authMod.onAuthStateChanged(_auth, function(user) {
           if (user) {
             _syncCourseStateFromFirebase();
           }
-          /* Cancelar la suscripción — solo necesitamos el primer evento */
           unsub();
         });
       })
@@ -72,7 +61,6 @@ function getCurrentUID() {
 
 /* =====================================================
    SINCRONIZACIÓN DEL ESTADO DEL CURSO (cross-device)
-   Colección: "curso_estado/{uid}/cursos/{cursoId}"
    ===================================================== */
 
 async function _saveCourseStateToFirebase(state) {
@@ -697,6 +685,35 @@ function getUnlockDate(ms) {
   });
 }
 
+/* ─── FIX v1.5: Deduplicación local de inscripciones ──────────────────────
+   Evita que la misma asignatura aparezca dos veces en Mis Cursos /
+   Calificaciones cuando fue inscrita desde dos rutas distintas de la app
+   (p.ej. catálogo general vs página del curso).
+   Conserva siempre el mejor estado: nota más alta, aprobado=true,
+   estado='completado'.
+   ───────────────────────────────────────────────────────────────────────── */
+function _deduplicateLocal(list) {
+  var seen = {};
+  for (var i = 0; i < list.length; i++) {
+    var item = list[i];
+    var key  = String(item.cursoId || item.id || item.nombre || '').toLowerCase().trim();
+    if (!key) continue;
+    if (!seen[key]) {
+      seen[key] = Object.assign({}, item);
+    } else {
+      var prev     = seen[key];
+      var prevNota = typeof prev.nota_final === 'number' ? prev.nota_final : -1;
+      var itemNota = typeof item.nota_final === 'number' ? item.nota_final : -1;
+      if (itemNota > prevNota)            prev.nota_final = item.nota_final;
+      if (item.aprobado === true)         prev.aprobado   = true;
+      if (item.estado === 'completado')   prev.estado     = 'completado';
+      if (!prev.cursoId && item.cursoId)  prev.cursoId    = item.cursoId;
+      if (!prev.id      && item.id)       prev.id         = item.id;
+    }
+  }
+  return Object.values(seen);
+}
+
 /* ===== STATE ===== */
 var STATE_KEY = "ingles_a1_state";
 function getState() {
@@ -706,7 +723,6 @@ function getState() {
 
 function saveState(s) {
   localStorage.setItem(STATE_KEY, JSON.stringify(s));
-  /* Guardar en Firebase de forma no-bloqueante */
   _saveCourseStateToFirebase(s);
 }
 
@@ -1147,11 +1163,8 @@ function finishExam() {
     if (finalApproved || prevApproved) state.finalApproved = true;
   }
 
-  /* saveState sincroniza a Firebase automáticamente */
   saveState(state);
 
-  /* ── FIX 2: syncXPToProfile es async — llamar sin bloquear
-     pero capturar errores con .catch() ── */
   syncXPToProfile(state.xp, state.finalApproved || false, state.finalGrade, examContext.type, grade)
     .catch(function(err) { console.warn('[Ingles] syncXPToProfile error:', err); });
 
@@ -1228,12 +1241,9 @@ function findLesson(id) {
 }
 
 /* =====================================================
-   FIX 2+3+4: syncXPToProfile — ahora es ASYNC y
-   secuencial: primero crea/actualiza la inscripción
-   en Firestore, luego actualiza la nota del examen.
-   Esto evita el race condition que causaba el error
-   "No document to update" cuando el documento aún
-   no existía en la colección "inscripciones".
+   syncXPToProfile — v1.5
+   FIX: _deduplicateLocal() elimina entradas duplicadas
+   del mismo curso antes de guardar en localStorage.
    ===================================================== */
 async function syncXPToProfile(courseXP, finalApproved, finalGrade, examType, examGrade) {
   try {
@@ -1289,7 +1299,6 @@ async function syncXPToProfile(courseXP, finalApproved, finalGrade, examType, ex
       var gradeToSave = (typeof finalGrade === 'number') ? finalGrade : examGrade;
       if (typeof gradeToSave === 'number') {
         var prevNota = enrollments[idx].nota_final;
-        /* Guardar siempre la nota más alta */
         if (typeof prevNota !== 'number' || gradeToSave > prevNota) {
           enrollments[idx].nota_final = gradeToSave;
         }
@@ -1303,22 +1312,22 @@ async function syncXPToProfile(courseXP, finalApproved, finalGrade, examType, ex
         enrollments[idx].estado   = 'en_progreso';
       }
     }
-    localStorage.setItem(enrollKey, JSON.stringify(enrollments));
+
+    /* ── FIX v1.5: deduplicar antes de guardar ── */
+    localStorage.setItem(enrollKey, JSON.stringify(_deduplicateLocal(enrollments)));
 
     /* ── 3. Sincronización con Firebase (si hay sesión) ── */
-    if (!uid) return; /* Sin sesión: solo localStorage */
+    if (!uid) return;
 
     try {
       var dbMod = await import('./database.js');
 
-      /* PASO A: Crear/actualizar inscripción en Firestore PRIMERO
-         Se usa setDoc con merge:true en database.js para no pisar datos */
+      /* PASO A: Crear/actualizar inscripción en Firestore PRIMERO */
       if (dbMod.enrollCourse) {
         await dbMod.enrollCourse(uid, Object.assign({}, enrollments[idx], { id: COURSE.id }));
       }
 
-      /* PASO B: Actualizar nota del examen DESPUÉS de que el documento existe
-         Esto evita el error "document not found" de updateDoc */
+      /* PASO B: Actualizar nota del examen DESPUÉS de que el documento existe */
       if (dbMod.updateExamResult && examType === 'final') {
         var notaFinal     = enrollments[idx].nota_final;
         var aprobadoFinal = enrollments[idx].aprobado === true;
