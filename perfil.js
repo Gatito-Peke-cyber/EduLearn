@@ -1,10 +1,15 @@
 /* =====================================================
-   EduLearn — Perfil — JS v6.0
-   NUEVO: Sincronización Firebase cross-device
-   - Carga datos de Firestore al iniciar sesión
-   - Guarda cambios a Firestore en tiempo real
-   - Redirige a login si no hay sesión activa
-   - TODAS las funciones originales conservadas
+   EduLearn — Perfil — JS v6.2
+   FIXES:
+   - Horas aprendidas: solo cursos completados/aprobados
+   - Rachas: seguimiento real por fecha local
+   - Misiones: reset real a hora local (medianoche/lunes/día 1)
+   - Misiones: cuenta regresiva en días, horas, minutos, segundos
+   - Misiones: funcionales y botón RECLAMAR solo cuando se ganó
+   - d02: rastreo real de secciones visitadas
+   - d06: timer real de 5 minutos en plataforma
+   - Insignias: usa horas corregidas
+   - w04: xp reward corregido (10,000,000 → 100)
    ===================================================== */
 'use strict';
 
@@ -19,12 +24,17 @@ import {
 } from './database.js';
 
 /* ---- KEYS ---- */
-const PROFILE_KEY  = 'perfil_usuario';
-const ENROLL_KEY   = 'inscripciones';
-const BADGE_SEEN   = 'insignias_celebradas_v4';
-const MISSION_KEY  = 'misiones_estado_v4';
-const EVENTS_KEY   = 'timeline_events';
-const BUZON_KEY    = 'buzon_estado';
+const PROFILE_KEY    = 'perfil_usuario';
+const ENROLL_KEY     = 'inscripciones';
+const BADGE_SEEN     = 'insignias_celebradas_v4';
+const MISSION_KEY    = 'misiones_estado_v4';
+const EVENTS_KEY     = 'timeline_events';
+const BUZON_KEY      = 'buzon_estado';
+const LAST_VISIT_KEY = 'ultima_visita_fecha';
+const RESET_KEY      = 'mission_resets_v2';
+const SECTIONS_KEY   = 'sections_visited_today';
+const BASELINE_KEY   = 'mission_baselines_v2';
+const ACTIVE_DAYS_KEY= 'active_days_this_week';
 
 /* ---- UID del usuario activo (se asigna tras auth) ---- */
 let currentUID = null;
@@ -41,9 +51,9 @@ const BADGES = [
   { id:'b05', icon:'⚡', name:'RACHA x3',           desc:'3 días seguidos de actividad',            req:'racha>=3',      xp:40,  cat:'racha'     },
   { id:'b06', icon:'🔥', name:'RACHA x7',           desc:'7 días seguidos de actividad',            req:'racha>=7',      xp:80,  cat:'racha'     },
   { id:'b07', icon:'💎', name:'RACHA x30',          desc:'30 días seguidos de actividad',           req:'racha>=30',     xp:300, cat:'racha'     },
-  { id:'b08', icon:'⏱', name:'HORA LIBRE',         desc:'Acumular 10 horas de aprendizaje',        req:'horas>=10',     xp:50,  cat:'tiempo'    },
-  { id:'b09', icon:'🕐', name:'DEDICADO',           desc:'Acumular 50 horas de aprendizaje',        req:'horas>=50',     xp:120, cat:'tiempo'    },
-  { id:'b10', icon:'🕰', name:'MAESTRO DEL TIEMPO', desc:'Acumular 200 horas de aprendizaje',       req:'horas>=200',    xp:400, cat:'tiempo'    },
+  { id:'b08', icon:'⏱', name:'HORA LIBRE',         desc:'Completar 10 horas de aprendizaje',       req:'horas>=10',     xp:50,  cat:'tiempo'    },
+  { id:'b09', icon:'🕐', name:'DEDICADO',           desc:'Completar 50 horas de aprendizaje',       req:'horas>=50',     xp:120, cat:'tiempo'    },
+  { id:'b10', icon:'🕰', name:'MAESTRO DEL TIEMPO', desc:'Completar 200 horas de aprendizaje',      req:'horas>=200',    xp:400, cat:'tiempo'    },
   { id:'b11', icon:'🌟', name:'NIVEL 5',            desc:'Alcanzar el nivel 5',                     req:'nivel>=5',      xp:75,  cat:'progreso'  },
   { id:'b12', icon:'💫', name:'NIVEL 10',           desc:'Alcanzar el nivel 10',                    req:'nivel>=10',     xp:150, cat:'progreso'  },
   { id:'b13', icon:'🚀', name:'NIVEL 15',           desc:'Alcanzar el nivel máximo',                req:'nivel>=15',     xp:500, cat:'legendaria'},
@@ -60,7 +70,7 @@ const BADGES = [
   { id:'b24', icon:'🎁', name:'ESPECIAL EVENTO',    desc:'Participar en un taller temporal',        req:'talleres>=1',   xp:80,  cat:'evento'    },
 ];
 
-/* ---- MISSIONS ---- */
+/* ---- MISSIONS (w04 xp CORREGIDO: 10000000 → 100) ---- */
 const MISSION_DEF = {
   daily: [
     { id:'d01', name:'PRIMER CLIC',     desc:'Visita tu perfil hoy',               icon:'👤', prog:1, max:1,  xp:10, tipo:'daily' },
@@ -74,13 +84,13 @@ const MISSION_DEF = {
     { id:'w01', name:'CURSOS x3',       desc:'Inscríbete en 3 cursos esta semana',  icon:'🎮', prog:0, max:3,  xp:60,  tipo:'weekly' },
     { id:'w02', name:'RACHA x5',        desc:'5 días activos esta semana',          icon:'🔥', prog:0, max:5,  xp:80,  tipo:'weekly' },
     { id:'w03', name:'ÁREA NUEVA',      desc:'Descubre una área de aprendizaje',    icon:'🌍', prog:0, max:1,  xp:50,  tipo:'weekly' },
-    { id:'w04', name:'XP x100',         desc:'Gana 100 XP esta semana',             icon:'⚡', prog:0, max:100,xp:10000000,  tipo:'weekly' },
+    { id:'w04', name:'XP x100',         desc:'Gana 100 XP esta semana',             icon:'⚡', prog:0, max:100,xp:100, tipo:'weekly' },
     { id:'w05', name:'COLECCIÓN',       desc:'Llega a 5 cursos inscritos en total', icon:'📦', prog:0, max:5,  xp:90,  tipo:'weekly' },
     { id:'w06', name:'BUZÓN LIMPIO',    desc:'Lee todos los mensajes del buzón',    icon:'📭', prog:0, max:1,  xp:40,  tipo:'weekly' },
   ],
   monthly: [
     { id:'m01', name:'MARATÓN',         desc:'Inscríbete en 10 cursos este mes',    icon:'🏃', prog:0, max:10, xp:200, tipo:'monthly' },
-    { id:'m02', name:'50 HORAS',        desc:'Acumula 50 horas de aprendizaje',     icon:'📅', prog:0, max:50, xp:300, tipo:'monthly' },
+    { id:'m02', name:'50 HORAS',        desc:'Completa 50 horas de aprendizaje',    icon:'📅', prog:0, max:50, xp:300, tipo:'monthly' },
     { id:'m03', name:'MULTITALENTO',    desc:'Cursos en al menos 4 áreas distintas',icon:'🎭', prog:0, max:4,  xp:250, tipo:'monthly' },
     { id:'m04', name:'XP x500',         desc:'Acumula 500 XP este mes',             icon:'💰', prog:0, max:500,xp:180, tipo:'monthly' },
     { id:'m05', name:'NIVEL UP',        desc:'Sube al menos un nivel este mes',     icon:'🆙', prog:0, max:1,  xp:150, tipo:'monthly' },
@@ -153,6 +163,7 @@ function getEnrolled(){
 function getMissions(){ return ls(MISSION_KEY) || {}; }
 function getEvents(){   return ls(EVENTS_KEY)  || []; }
 function getBuzonState(){ return ls(BUZON_KEY) || {}; }
+function getBaselines(){ return ls(BASELINE_KEY) || {}; }
 
 function toast(msg, color='var(--cyan)'){
   const t = $('#toast'); if(!t) return;
@@ -173,52 +184,280 @@ function timeAgo(iso){
 }
 
 /* ======================================================
-   FIREBASE SYNC — Guardar a Firestore en paralelo
-   Todas las funciones originales de localStorage
-   se mantienen intactas. Firebase es ADICIONAL.
+   ★ FIX 1: HORAS — solo cursos completados/aprobados
+   Antes se sumaban TODAS las horas de cursos inscritos
+   (incluyendo cursos en progreso que ya traen sus horas
+   totales), causando lecturas de 22h o 48h desde el día 1.
+   Ahora solo se cuentan cursos realmente terminados.
    ====================================================== */
+function getHorasAprendidas(enrolled) {
+  return enrolled
+    .filter(c => c.estado === 'completado' || c.aprobado === true)
+    .reduce((a, c) => a + (c.horas || 0), 0);
+}
 
-/**
- * Guarda el estado de misiones en Firestore si hay usuario activo.
- */
+/* ======================================================
+   ★ FIX 2: RACHA — seguimiento real por fecha local
+   Compara la última visita con hoy y ayer (hora local).
+   Si es un día nuevo consecutivo → incrementa.
+   Si se saltó un día → resetea a 1.
+   Si ya visitó hoy → no cambia nada.
+   ====================================================== */
+function updateRacha() {
+  const p = getProfile();
+  const today = new Date().toDateString(); // Fecha local
+  const lastVisit = localStorage.getItem(LAST_VISIT_KEY);
+
+  if (lastVisit === today) return; // Ya se registró hoy, sin cambios
+
+  const ayer = new Date();
+  ayer.setDate(ayer.getDate() - 1);
+
+  if (lastVisit === ayer.toDateString()) {
+    // Día consecutivo — incrementar racha
+    p.racha = (p.racha || 0) + 1;
+  } else {
+    // Primer visita o se rompió la racha — empezar en 1
+    p.racha = 1;
+  }
+
+  localStorage.setItem(LAST_VISIT_KEY, today);
+  lsSet(PROFILE_KEY, p);
+
+  // Sync Firebase sin bloquear
+  if (currentUID) {
+    firebaseSaveProfile({ racha: p.racha }).catch(e => console.warn('[Sync] racha:', e));
+  }
+}
+
+/* ---- Helpers de fechas para misiones ---- */
+function getWeekStart(date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  const day = d.getDay(); // 0=Domingo
+  const diff = day === 0 ? -6 : 1 - day; // Lunes como inicio de semana
+  d.setDate(d.getDate() + diff);
+  return d;
+}
+
+function getTodayStr() {
+  const n = new Date();
+  return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`;
+}
+function getWeekStr() {
+  const ws = getWeekStart(new Date());
+  return `${ws.getFullYear()}-${String(ws.getMonth()+1).padStart(2,'0')}-${String(ws.getDate()).padStart(2,'0')}`;
+}
+function getMonthStr() {
+  const n = new Date();
+  return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;
+}
+
+/* ======================================================
+   ★ FIX 3: RESET DE MISIONES a hora local
+   - Diarias: se resetean a medianoche local
+   - Semanales: se resetean el lunes a medianoche local
+   - Mensuales: se resetean el día 1 de cada mes
+   Guarda una "línea base" para calcular progreso relativo.
+   ====================================================== */
+function captureBaseline(period) {
+  const enrolled = getEnrolled();
+  const p = getProfile();
+  const baselines = getBaselines();
+  baselines[period] = {
+    enrolledCount: enrolled.length,
+    xp: p.xp || 0,
+    nivel: computeLevel(p.xp || 0),
+    areas: new Set(enrolled.map(c => c.area).filter(Boolean)).size,
+    fecha: new Date().toISOString(),
+  };
+  lsSet(BASELINE_KEY, baselines);
+}
+
+function checkMissionResets() {
+  const resets = ls(RESET_KEY) || {};
+  const mState = getMissions();
+  let changed = false;
+
+  const todayStr = getTodayStr();
+  const weekStr  = getWeekStr();
+  const monthStr = getMonthStr();
+
+  // ── Reseteo DIARIO ──
+  if (resets.daily !== todayStr) {
+    captureBaseline('daily');
+    MISSION_DEF.daily.forEach(m => { delete mState[m.id]; });
+    // d01 se auto-completa al visitar (se marca en recordVisit)
+    resets.daily = todayStr;
+    // Limpiar secciones visitadas del día anterior
+    localStorage.removeItem(SECTIONS_KEY);
+    changed = true;
+  }
+
+  // ── Reseteo SEMANAL (lunes) ──
+  if (resets.weekly !== weekStr) {
+    captureBaseline('weekly');
+    MISSION_DEF.weekly.forEach(m => { delete mState[m.id]; });
+    resets.weekly = weekStr;
+    // Limpiar días activos de la semana anterior
+    localStorage.removeItem(ACTIVE_DAYS_KEY);
+    changed = true;
+  }
+
+  // ── Reseteo MENSUAL (día 1) ──
+  if (resets.monthly !== monthStr) {
+    captureBaseline('monthly');
+    MISSION_DEF.monthly.forEach(m => { delete mState[m.id]; });
+    resets.monthly = monthStr;
+    changed = true;
+  }
+
+  if (changed) {
+    lsSet(MISSION_KEY, mState);
+    lsSet(RESET_KEY, resets);
+    if (currentUID) {
+      firebaseSaveMisiones(mState).catch(e => console.warn('[Sync] reset misiones:', e));
+    }
+  }
+}
+
+/* ======================================================
+   ★ FIX 4: CUENTA REGRESIVA en días, horas, min, seg
+   ====================================================== */
+function formatCountdown(secs) {
+  if (secs <= 0) return '00m 00s';
+  const pad = n => String(n).padStart(2, '0');
+  const d = Math.floor(secs / 86400);
+  const h = Math.floor((secs % 86400) / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = secs % 60;
+  if (d > 0) return `${d}d ${pad(h)}h ${pad(m)}m ${pad(s)}s`;
+  if (h > 0) return `${pad(h)}h ${pad(m)}m ${pad(s)}s`;
+  return `${pad(m)}m ${pad(s)}s`;
+}
+
+function getSecsUntilReset() {
+  const now = new Date();
+  // Diario → próxima medianoche local
+  const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  const dailySecs = Math.max(0, Math.floor((nextMidnight - now) / 1000));
+  // Semanal → próximo lunes a medianoche
+  const nextWeekStart = getWeekStart(now);
+  nextWeekStart.setDate(nextWeekStart.getDate() + 7);
+  const weeklySecs = Math.max(0, Math.floor((nextWeekStart - now) / 1000));
+  // Mensual → próximo día 1 a medianoche
+  const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const monthlySecs = Math.max(0, Math.floor((nextMonth - now) / 1000));
+  return { dailySecs, weeklySecs, monthlySecs };
+}
+
+let countdownInterval = null;
+function updateMissionCountdowns() {
+  const { dailySecs, weeklySecs, monthlySecs } = getSecsUntilReset();
+  const dEl = document.getElementById('cd-daily');
+  const wEl = document.getElementById('cd-weekly');
+  const mEl = document.getElementById('cd-monthly');
+  if (dEl) dEl.textContent = formatCountdown(dailySecs);
+  if (wEl) wEl.textContent = formatCountdown(weeklySecs);
+  if (mEl) mEl.textContent = formatCountdown(monthlySecs);
+}
+function startCountdowns() {
+  updateMissionCountdowns();
+  if (countdownInterval) clearInterval(countdownInterval);
+  countdownInterval = setInterval(updateMissionCountdowns, 1000);
+}
+
+/* ======================================================
+   ★ FIX 5: RASTREO DE SECCIONES VISITADAS (d02)
+   ====================================================== */
+function getSectionsToday() {
+  const today = new Date().toDateString();
+  try {
+    const data = JSON.parse(localStorage.getItem(SECTIONS_KEY) || '{}');
+    if (data.date !== today) return { date: today, sections: [] };
+    return data;
+  } catch { return { date: today, sections: [] }; }
+}
+
+function recordSectionVisit(tabName) {
+  const data = getSectionsToday();
+  if (!data.sections.includes(tabName)) {
+    data.sections.push(tabName);
+    localStorage.setItem(SECTIONS_KEY, JSON.stringify(data));
+  }
+  const count = data.sections.length;
+
+  // Auto-completar d02 cuando llega a 3
+  const mState = getMissions();
+  if (!mState.d02?.done && count >= 3) {
+    completeMissionSilent('d02');
+    renderMissions();
+    renderHeader();
+    toast('🗺️ MISIÓN: EXPLORADOR COMPLETADA +15 XP', 'var(--yellow)');
+  }
+}
+
+/* ======================================================
+   ★ FIX 6: DÍAS ACTIVOS ESTA SEMANA (w02)
+   ====================================================== */
+function recordActiveDay() {
+  const today = getTodayStr();
+  const weekStr = getWeekStr();
+  let data;
+  try { data = JSON.parse(localStorage.getItem(ACTIVE_DAYS_KEY) || '{}'); } catch { data = {}; }
+  if (data.weekStr !== weekStr) data = { weekStr, days: [] };
+  if (!data.days.includes(today)) data.days.push(today);
+  localStorage.setItem(ACTIVE_DAYS_KEY, JSON.stringify(data));
+  return data.days.length;
+}
+
+function getActiveDaysThisWeek() {
+  const weekStr = getWeekStr();
+  let data;
+  try { data = JSON.parse(localStorage.getItem(ACTIVE_DAYS_KEY) || '{}'); } catch { data = {}; }
+  if (data.weekStr !== weekStr) return 0;
+  return (data.days || []).length;
+}
+
+/* ======================================================
+   ★ FIX 7: TIMER DE 5 MINUTOS EN PLATAFORMA (d06)
+   ====================================================== */
+function startPlatformTimer() {
+  setTimeout(() => {
+    const mState = getMissions();
+    if (!mState.d06?.done) {
+      completeMissionSilent('d06');
+      renderMissions();
+      renderHeader();
+      toast('⏱ MISIÓN: 5 MINUTOS COMPLETADA +10 XP', 'var(--yellow)');
+    }
+  }, 5 * 60 * 1000); // 5 minutos reales
+}
+
+/* ======================================================
+   FIREBASE SYNC — Guardar a Firestore en paralelo
+   ====================================================== */
 async function firebaseSaveMisiones(mState) {
   if(!currentUID) return;
   try { await saveMisionesEstado(currentUID, mState); } catch(e) { console.warn('[Sync] misiones:', e); }
 }
-
-/**
- * Guarda el estado del buzón en Firestore si hay usuario activo.
- */
 async function firebaseSaveBuzon(bState) {
   if(!currentUID) return;
   try { await saveBuzonEstado(currentUID, bState); } catch(e) { console.warn('[Sync] buzon:', e); }
 }
-
-/**
- * Guarda un evento de timeline en Firestore si hay usuario activo.
- */
 async function firebaseSaveTimelineEvent(ev) {
   if(!currentUID) return;
   try { await addTimelineEventDB(currentUID, ev); } catch(e) { console.warn('[Sync] timeline:', e); }
 }
-
-/**
- * Guarda el perfil (avatar, xp, etc.) en Firestore si hay usuario activo.
- */
 async function firebaseSaveProfile(data) {
   if(!currentUID) return;
   try { await updateUserProfile(currentUID, data); } catch(e) { console.warn('[Sync] profile:', e); }
 }
-
-/**
- * Muestra un indicador de carga de sincronización en el header.
- */
 function showSyncIndicator(text = '⟳ SINCRONIZANDO...') {
   const xpBadge = $('#xp-display');
   if(xpBadge) xpBadge.style.opacity = '0.5';
   toast(text, 'var(--cyan)');
 }
-
 function hideSyncIndicator() {
   const xpBadge = $('#xp-display');
   if(xpBadge) xpBadge.style.opacity = '1';
@@ -290,15 +529,16 @@ function xpForNextLevel(lv, xp){
 }
 
 /* =====================================================
-   BADGE SYSTEM
+   BADGE SYSTEM — usa getHorasAprendidas (FIX)
    ===================================================== */
 function getEarnedBadgeIds(p, enrolled) {
   const xp        = p.xp || 0;
   const racha     = p.racha || 0;
-  const horas     = enrolled.reduce((a,c) => a + (c.horas||0), 0);
+  // ★ FIX: solo horas de cursos completados/aprobados
+  const horas     = getHorasAprendidas(enrolled);
   const aprobados = enrolled.filter(c => c.estado==='completado' || c.aprobado===true).length;
   const lv        = computeLevel(xp);
-  const areas     = new Set(enrolled.map(c => c.area)).size;
+  const areas     = new Set(enrolled.map(c => c.area).filter(Boolean)).size;
   const talleres  = enrolled.filter(c => c.tipo==='temporal').length;
   const totalCursos = enrolled.length;
 
@@ -363,11 +603,12 @@ function renderHeader(){
   const statXp       = $('#stat-xp');        if(statXp)        statXp.textContent        = p.xp||0;
 }
 
-/* ---- RENDER RESUMEN ---- */
+/* ---- RENDER RESUMEN — usa horas corregidas ---- */
 function renderResumen(){
   const p       = getProfile();
   const enrolled= getEnrolled();
-  const horas   = enrolled.reduce((a,c)=> a+(c.horas||0), 0);
+  // ★ FIX: solo horas de cursos completados/aprobados
+  const horas   = getHorasAprendidas(enrolled);
   const aprobados= enrolled.filter(c => c.estado==='completado' || c.aprobado===true).length;
 
   const rcCursos  = $('#rc-cursos');   if(rcCursos)   rcCursos.textContent   = enrolled.length;
@@ -727,70 +968,144 @@ function celebrateBadge(badge){
   document.body.style.overflow='hidden';
 }
 
-/* ---- RENDER MISSIONS ---- */
+/* =====================================================
+   ★ RENDER MISSIONS — Con countdown y botón justo
+   - Countdown real inyectado encima de cada columna
+   - RECLAMAR solo aparece si el progreso real >= max
+   - Sin botón que dé XP gratis
+   ===================================================== */
 function renderMissions(){
   const p       = getProfile();
   const enrolled= getEnrolled();
   const mState  = getMissions();
+  const baselines = getBaselines();
+  // ★ FIX: horas solo de completados
+  const horasAprendidas = getHorasAprendidas(enrolled);
 
-  function renderGroup(defs, containerId){
-    const el = $(containerId); if(!el) return;
-    el.innerHTML = defs.map(m=>{
-      const st = mState[m.id] || { prog: m.id==='d01'?1:0, done: m.id==='d01' };
-      let prog = st.prog || 0;
+  // Valores actuales para comparar con baselines
+  const currentXP      = p.xp || 0;
+  const currentCursos  = enrolled.length;
+  const currentAreas   = new Set(enrolled.map(c => c.area).filter(Boolean)).size;
+  const currentLevel   = computeLevel(currentXP);
 
-      if(!st.done){
-        switch(m.id){
-          case 'd03': case 'w01': case 'm01': prog = Math.min(enrolled.length, m.max); break;
-          case 'w05': prog = Math.min(enrolled.length, m.max); break;
-          case 'd04': prog = (p.racha||0) > 0 ? 1 : 0; break;
-          case 'w02': prog = Math.min(p.racha||0, m.max); break;
-          case 'w04': case 'm04': prog = Math.min(p.xp||0, m.max); break;
-          case 'm02': prog = Math.min(enrolled.reduce((a,c)=>a+(c.horas||0),0), m.max); break;
-          case 'm03': prog = Math.min(new Set(enrolled.map(c=>c.area)).size, m.max); break;
-          case 'm05': prog = Math.min(computeLevel(p.xp||0)-1, 1); break;
-        }
+  // Líneas base por período
+  const bDay   = baselines.daily   || { enrolledCount:0, xp:0, nivel:1, areas:0 };
+  const bWeek  = baselines.weekly  || { enrolledCount:0, xp:0, nivel:1, areas:0 };
+  const bMonth = baselines.monthly || { enrolledCount:0, xp:0, nivel:1, areas:0 };
+
+  // Secciones visitadas hoy
+  const secData = getSectionsToday();
+  const sectionsCount = secData.sections.length;
+
+  // Días activos esta semana
+  const activeDaysThisWeek = getActiveDaysThisWeek();
+
+  const { dailySecs, weeklySecs, monthlySecs } = getSecsUntilReset();
+
+  function computeProg(m, st) {
+    if (st?.done) return m.max; // ya completada, mostrar llena
+
+    let prog = st?.prog || 0;
+
+    switch(m.id) {
+      // ── DIARIAS ──
+      case 'd01': prog = 1; break; // Auto al visitar
+      case 'd02': prog = Math.min(sectionsCount, m.max); break;
+      case 'd03': prog = Math.min(Math.max(0, currentCursos - bDay.enrolledCount), m.max); break;
+      case 'd04': prog = (p.racha || 0) >= 1 ? 1 : 0; break;
+      case 'd05': prog = st?.prog || 0; break; // Se completa en markBuzonRead
+      case 'd06': prog = st?.prog || 0; break; // Se completa con timer
+      // ── SEMANALES ──
+      case 'w01': prog = Math.min(Math.max(0, currentCursos - bWeek.enrolledCount), m.max); break;
+      case 'w02': prog = Math.min(activeDaysThisWeek, m.max); break;
+      case 'w03': prog = currentAreas >= 1 ? 1 : 0; break;
+      case 'w04': prog = Math.min(Math.max(0, currentXP - bWeek.xp), m.max); break;
+      case 'w05': prog = Math.min(currentCursos, m.max); break;
+      case 'w06': prog = st?.prog || 0; break; // Se completa en markAllBuzonRead
+      // ── MENSUALES ──
+      case 'm01': prog = Math.min(Math.max(0, currentCursos - bMonth.enrolledCount), m.max); break;
+      case 'm02': prog = Math.min(horasAprendidas, m.max); break;
+      case 'm03': prog = Math.min(currentAreas, m.max); break;
+      case 'm04': prog = Math.min(Math.max(0, currentXP - bMonth.xp), m.max); break;
+      case 'm05': prog = Math.min(Math.max(0, currentLevel - bMonth.nivel), m.max); break;
+    }
+    return prog;
+  }
+
+  function renderGroup(defs, containerId, countdownId, countdownSecs, cdClass) {
+    const el = $(containerId);
+    if (!el) return;
+
+    // ── Inyectar countdown encima ──
+    let cdWrap = document.getElementById(countdownId);
+    if (!cdWrap) {
+      // Crear y agregar antes del contenedor de misiones
+      const col = el.closest('.missions-col');
+      if (col) {
+        cdWrap = document.createElement('div');
+        cdWrap.className = `mission-countdown ${cdClass}`;
+        cdWrap.id = countdownId;
+        col.insertBefore(cdWrap, el);
       }
+    }
+    if (cdWrap) {
+      cdWrap.innerHTML = `<span class="cd-icon">⟳</span><span class="cd-label">RESET EN:</span><span class="cd-val" id="${countdownId}-val">${formatCountdown(countdownSecs)}</span>`;
+    }
 
-      const done = st.done || prog >= m.max;
-      const pct  = Math.min(100,(prog/m.max)*100).toFixed(0);
+    el.innerHTML = defs.map(m => {
+      const st   = mState[m.id];
+      const prog = computeProg(m, st);
+      const done = (st?.done) || prog >= m.max;
+      const pct  = Math.min(100, (prog / m.max) * 100).toFixed(0);
+
+      // ★ FIX: RECLAMAR solo cuando el progreso REAL llegó al máximo
+      // y la misión no está ya marcada como completada
+      const canClaim = !st?.done && prog >= m.max;
 
       return `
-      <div class="mission-item ${done?'done':''}" data-mid="${m.id}">
+      <div class="mission-item ${done ? 'done' : ''}" data-mid="${m.id}">
         <div class="mi-header">
           <span class="mi-name">${m.icon} ${m.name}</span>
           <span class="mi-xp">+${m.xp} XP</span>
         </div>
         <div class="mi-desc">${m.desc}</div>
-        <div class="mi-progress"><div class="mi-progress-fill" style="width:${pct}%"></div></div>
+        <div class="mi-progress">
+          <div class="mi-progress-fill" style="width:${done ? 100 : pct}%"></div>
+        </div>
         <div class="mi-foot">
-          <span class="mi-count">${prog}/${m.max}</span>
+          <span class="mi-count">${done ? m.max : prog}/${m.max}</span>
           ${done
             ? `<span class="mi-done-label">✓ COMPLETADA</span>`
-            : prog > 0
-              ? `<button class="btn btn-complete" data-mid="${m.id}">COMPLETAR</button>`
-              : ''
+            : canClaim
+              ? `<button class="btn btn-complete" data-mid="${m.id}">⚡ RECLAMAR</button>`
+              : prog > 0
+                ? `<span class="mi-prog-label">${pct}% EN PROGRESO</span>`
+                : ``
           }
         </div>
       </div>`;
     }).join('');
 
-    el.querySelectorAll('.btn-complete').forEach(btn=>{
-      btn.addEventListener('click', ()=> completeMission(btn.dataset.mid));
+    el.querySelectorAll('.btn-complete').forEach(btn => {
+      btn.addEventListener('click', () => completeMission(btn.dataset.mid));
     });
   }
 
-  renderGroup(MISSION_DEF.daily,   '#mission-daily');
-  renderGroup(MISSION_DEF.weekly,  '#mission-weekly');
-  renderGroup(MISSION_DEF.monthly, '#mission-monthly');
+  renderGroup(MISSION_DEF.daily,   '#mission-daily',   'cd-daily',   dailySecs,   'daily');
+  renderGroup(MISSION_DEF.weekly,  '#mission-weekly',  'cd-weekly',  weeklySecs,  'weekly');
+  renderGroup(MISSION_DEF.monthly, '#mission-monthly', 'cd-monthly', monthlySecs, 'monthly');
+
+  // Arrancar el tick de countdowns si no está corriendo
+  startCountdowns();
 }
 
-/* MODIFICADO: también guarda misiones y XP en Firebase */
+/* ── completeMission: llamado por botón RECLAMAR ── */
 function completeMission(mid){
   const all = [...MISSION_DEF.daily,...MISSION_DEF.weekly,...MISSION_DEF.monthly];
   const m = all.find(x=>x.id===mid); if(!m) return;
   const mState = getMissions();
   if(mState[mid]?.done) return;
+
   mState[mid] = { prog: m.max, done: true };
   lsSet(MISSION_KEY, mState);
 
@@ -801,7 +1116,6 @@ function completeMission(mid){
   addTimelineEvent({ icon:'⚔️', title:`Misión completada: ${m.name}`, detail:`+${m.xp} XP ganados` });
   toast(`⚔️ MISIÓN COMPLETADA: +${m.xp} XP`, 'var(--yellow)');
 
-  /* --- SYNC FIREBASE --- */
   firebaseSaveMisiones(mState);
   firebaseSaveProfile({ xp: p.xp });
 
@@ -810,16 +1124,33 @@ function completeMission(mid){
   renderResumen();
 }
 
+/* ── completeMissionSilent: llamado por sistema (sin re-render) ── */
+function completeMissionSilent(mid){
+  const all = [...MISSION_DEF.daily,...MISSION_DEF.weekly,...MISSION_DEF.monthly];
+  const m = all.find(x=>x.id===mid); if(!m) return;
+  const mState = getMissions();
+  if(mState[mid]?.done) return;
+
+  mState[mid] = { prog: m.max, done: true };
+  lsSet(MISSION_KEY, mState);
+
+  const p = getProfile();
+  p.xp = (p.xp||0) + m.xp;
+  lsSet(PROFILE_KEY, p);
+
+  addTimelineEvent({ icon: m.icon, title:`Misión: ${m.name}`, detail:`+${m.xp} XP` });
+
+  firebaseSaveMisiones(mState).catch(()=>{});
+  firebaseSaveProfile({ xp: p.xp }).catch(()=>{});
+}
+
 /* ---- TIMELINE ---- */
-/* MODIFICADO: también guarda en Firebase */
 function addTimelineEvent(ev){
   const event = { ...ev, fecha: new Date().toISOString() };
   const events = getEvents();
   events.unshift(event);
   if(events.length > 50) events.pop();
   lsSet(EVENTS_KEY, events);
-
-  /* --- SYNC FIREBASE --- */
   firebaseSaveTimelineEvent(event);
 }
 
@@ -903,42 +1234,45 @@ function renderBuzon(){
   });
 }
 
-/* MODIFICADO: también guarda estado buzón en Firebase */
+/* ★ FIX: markBuzonRead también da XP por d05 */
 function markBuzonRead(id){
   const state = getBuzonState();
   if(state[id]) return;
   state[id] = true;
   lsSet(BUZON_KEY, state);
-  const ms = getMissions();
-  if(!ms.d05?.done){ ms.d05={prog:1,done:true}; lsSet(MISSION_KEY,ms); }
 
-  /* --- SYNC FIREBASE --- */
+  // Auto-completar d05 con XP
+  completeMissionSilent('d05');
+
   firebaseSaveBuzon(state);
   firebaseSaveMisiones(getMissions());
 
   renderBuzon();
   renderMissions();
+  renderHeader();
   toast('📬 MENSAJE LEÍDO', 'var(--yellow)');
 }
 
-/* MODIFICADO: también guarda estado buzón en Firebase */
+/* ★ FIX: markAllBuzonRead también da XP por w06 */
 function markAllBuzonRead(){
   const state = getBuzonState();
   BUZON_MESSAGES.forEach(m=>{ state[m.id]=true; });
   lsSet(BUZON_KEY, state);
-  const ms = getMissions();
-  if(!ms.w06?.done){ ms.w06={prog:1,done:true}; lsSet(MISSION_KEY,ms); }
 
-  /* --- SYNC FIREBASE --- */
+  // Auto-completar d05 y w06 con XP
+  completeMissionSilent('d05');
+  completeMissionSilent('w06');
+
   firebaseSaveBuzon(state);
   firebaseSaveMisiones(getMissions());
 
   renderBuzon();
   renderMissions();
+  renderHeader();
   toast('📭 TODOS LOS MENSAJES LEÍDOS', 'var(--green)');
 }
 
-/* ---- TABS ---- */
+/* ---- TABS — registra visita de sección para d02 ---- */
 function initTabs(){
   $$('.tab').forEach(tab=>{
     tab.addEventListener('click',()=>{
@@ -947,6 +1281,10 @@ function initTabs(){
       tab.classList.add('active');
       const panel = $(`#tab-${tab.dataset.tab}`);
       if(panel) panel.classList.add('active');
+
+      // ★ FIX: Registrar sección visitada para misión d02
+      recordSectionVisit(tab.dataset.tab);
+
       switch(tab.dataset.tab){
         case 'insignias':       renderBadges();           break;
         case 'misiones':        renderMissions();         break;
@@ -961,7 +1299,6 @@ function initTabs(){
 }
 
 /* ---- AVATAR ---- */
-/* MODIFICADO: también guarda avatar en Firebase */
 function initAvatar(){
   const btn   = $('#btn-change-avatar');
   const modal = $('#avatar-modal');
@@ -978,10 +1315,7 @@ function initAvatar(){
         const p3 = getProfile();
         p3.avatar = opt.dataset.av;
         lsSet(PROFILE_KEY, p3);
-
-        /* --- SYNC FIREBASE --- */
         firebaseSaveProfile({ avatar: opt.dataset.av });
-
         modal.classList.remove('show');
         document.body.style.overflow='';
         renderHeader();
@@ -1070,26 +1404,42 @@ function initBackToTop(){
   btn.addEventListener('click',()=> window.scrollTo({top:0,behavior:'smooth'}));
 }
 
-/* ---- RECORD VISIT ---- */
+/* ======================================================
+   ★ RECORD VISIT — actualiza racha, registra día activo,
+   auto-completa d01 y d04
+   ====================================================== */
 function recordVisit(){
-  const ms = getMissions();
-  if(!ms.d01?.done){
-    ms.d01 = { prog:1, done:true };
-    lsSet(MISSION_KEY, ms);
-    /* --- SYNC FIREBASE --- */
-    firebaseSaveMisiones(ms);
+  // ★ FIX: Actualiza la racha real por fechas
+  updateRacha();
+
+  // ★ FIX: Registra este día como activo en la semana (para w02)
+  recordActiveDay();
+
+  // Auto-completar d01 (visitar perfil) con XP
+  const mState = getMissions();
+  if (!mState.d01?.done) {
+    completeMissionSilent('d01');
   }
+
+  // Auto-completar d04 (racha activa) con XP si racha >= 1
+  const p = getProfile();
+  if (!mState.d04?.done && (p.racha || 0) >= 1) {
+    completeMissionSilent('d04');
+  }
+
+  // Registrar visita en timeline (una vez por día)
   const events = getEvents();
   const today  = new Date().toDateString();
   if(!events.some(e => new Date(e.fecha).toDateString()===today && e.id==='visit')){
     addTimelineEvent({ id:'visit', icon:'👤', title:'Visitaste tu perfil', detail:'Hoy' });
   }
+
+  // También registra la sección "resumen" como visitada
+  recordSectionVisit('resumen');
 }
 
 /* ======================================================
    INIT PRINCIPAL CON FIREBASE AUTH
-   Espera confirmación de sesión antes de renderizar.
-   Si no hay sesión activa, redirige al login.
    ====================================================== */
 document.addEventListener('DOMContentLoaded', ()=>{
   hideLoader();
@@ -1106,8 +1456,12 @@ document.addEventListener('DOMContentLoaded', ()=>{
   initBackToTop();
   initCalifFilters();
 
-  /* Escuchar el estado de autenticación Firebase.
-     Se ejecuta una vez al cargar y cada vez que cambie. */
+  // ★ FIX: Verificar y resetear misiones a hora local ANTES de renderizar
+  checkMissionResets();
+
+  // ★ FIX: Timer de 5 minutos para d06
+  startPlatformTimer();
+
   let firstLoad = true;
 
   onAuthChange(async (user) => {
@@ -1129,17 +1483,16 @@ document.addEventListener('DOMContentLoaded', ()=>{
       } catch(err) {
         hideSyncIndicator();
         console.warn('[Perfil] Error de sincronización:', err);
-        // Continúa con datos locales si hay error de red
       }
 
-      // Renderizar DESPUÉS de que syncAllToLocalStorage haya
-      // escrito los datos de Firebase en localStorage
+      // ★ FIX: Resetear misiones DESPUÉS de sync (datos frescos)
+      checkMissionResets();
+
       renderHeader();
       renderResumen();
       renderBuzon();
       recordVisit();
 
-      // Verificar la tab activa y renderizarla también
       const activeTab = document.querySelector('.tab.active');
       if(activeTab) {
         switch(activeTab.dataset.tab){

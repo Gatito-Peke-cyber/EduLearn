@@ -740,3 +740,115 @@ a { text-decoration: none; color: inherit; }
   .calif-img-wrap { display: none; }
 }
 @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation: none !important; transition: none !important; } }
+
+
+
+
+/* =====================================================
+   EduLearn — Perfil — CSS Pixel Art v2.1
+   AÑADIDO: estilos para misiones countdown + progreso
+   (Añadir al final del perfil.css existente)
+   ===================================================== */
+
+/* ============================
+   COUNTDOWN DE MISIONES
+   ============================ */
+.mission-countdown {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-pixel);
+  font-size: 0.28rem;
+  color: var(--muted);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--border);
+  padding: 5px 9px;
+  margin-bottom: 10px;
+  letter-spacing: 1px;
+  position: relative;
+  overflow: hidden;
+}
+.mission-countdown::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent,
+    transparent 10px,
+    rgba(255,255,255,0.015) 10px,
+    rgba(255,255,255,0.015) 11px
+  );
+  pointer-events: none;
+}
+
+.mission-countdown.daily {
+  border-color: rgba(0, 248, 255, 0.25);
+}
+.mission-countdown.daily .cd-icon,
+.mission-countdown.daily .cd-val { color: var(--cyan); }
+.mission-countdown.daily .cd-label { color: rgba(0, 248, 255, 0.55); }
+
+.mission-countdown.weekly {
+  border-color: rgba(255, 224, 0, 0.25);
+}
+.mission-countdown.weekly .cd-icon,
+.mission-countdown.weekly .cd-val { color: var(--yellow); }
+.mission-countdown.weekly .cd-label { color: rgba(255, 224, 0, 0.55); }
+
+.mission-countdown.monthly {
+  border-color: rgba(170, 0, 255, 0.25);
+}
+.mission-countdown.monthly .cd-icon,
+.mission-countdown.monthly .cd-val { color: var(--purple); }
+.mission-countdown.monthly .cd-label { color: rgba(170, 0, 255, 0.55); }
+
+.cd-icon {
+  font-size: 0.65rem;
+  animation: spin 3s linear infinite;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.cd-label {
+  color: var(--muted);
+  letter-spacing: 2px;
+}
+.cd-val {
+  font-family: var(--font-pixel);
+  font-size: 0.3rem;
+  letter-spacing: 1px;
+  text-shadow: 0 0 8px currentColor;
+  flex: 1;
+  text-align: right;
+}
+
+/* ============================
+   ETIQUETA DE PROGRESO EN MISIONES
+   ============================ */
+.mi-prog-label {
+  font-family: var(--font-pixel);
+  font-size: 0.26rem;
+  color: var(--cyan);
+  opacity: 0.65;
+  letter-spacing: 1px;
+  align-self: center;
+}
+
+/* Botón RECLAMAR (reemplaza COMPLETAR) */
+.btn-complete {
+  background: transparent;
+  color: var(--yellow);
+  border: 2px solid var(--yellow) !important;
+  font-size: 0.32rem;
+  padding: 4px 9px;
+  letter-spacing: 1px;
+  animation: pulseYellow 2s ease-in-out infinite;
+}
+.btn-complete:hover {
+  background: var(--yellow) !important;
+  color: #000 !important;
+}
+@keyframes pulseYellow {
+  0%,100% { box-shadow: 2px 2px 0 #000, 0 0 8px rgba(255,224,0,0.2); }
+  50%      { box-shadow: 2px 2px 0 #000, 0 0 18px rgba(255,224,0,0.55); }
+}
