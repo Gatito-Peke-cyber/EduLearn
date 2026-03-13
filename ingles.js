@@ -129,7 +129,7 @@ function _mergeStates(local, remote) {
 /* ===================================================
    ★ CONFIGURACIÓN ★
    =================================================== */
-var FINAL_EXAM_COOLDOWN_DAYS = 3;
+var FINAL_EXAM_COOLDOWN_DAYS = 0;
 
 /* ===== COURSE DATA ===== */
 var COURSE = {
@@ -141,7 +141,492 @@ var COURSE = {
   finalPassingGrade: 17,
 
   units: [
-    
+    /* ══════════════════════ UNIDAD 1 ══════════════════════ */
+    {
+      id: "u1", title: "Greetings & Introductions", icon: "👋",
+      lessons: [
+        {
+          id: "u1l1", title: "Basic Greetings", icon: "😊", xp: 20,
+          content: {
+            intro: "In English, greetings depend on the time of day and how well you know someone. Let's learn the most important ones!",
+            sections: [
+              { title: "FORMAL GREETINGS", type: "vocab", items: [
+                { en: "Good morning", pron: "/gʊd ˈmɔːrnɪŋ/", es: "Buenos días" },
+                { en: "Good afternoon", pron: "/gʊd ˌæftərˈnuːn/", es: "Buenas tardes" },
+                { en: "Good evening", pron: "/gʊd ˈiːvnɪŋ/", es: "Buenas noches (saludo)" },
+                { en: "Good night", pron: "/gʊd naɪt/", es: "Buenas noches (despedida)" },
+              ]},
+              { title: "INFORMAL GREETINGS", type: "vocab", items: [
+                { en: "Hello / Hi", pron: "/həˈloʊ/ /haɪ/", es: "Hola" },
+                { en: "Hey!", pron: "/heɪ/", es: "¡Ey! / ¡Hola!" },
+                { en: "How are you?", pron: "/haʊ ɑːr juː/", es: "¿Cómo estás?" },
+                { en: "I'm fine, thanks!", pron: "/aɪm faɪn θæŋks/", es: "¡Estoy bien, gracias!" },
+              ]},
+              { title: "EXAMPLE DIALOGUES", type: "examples", items: [
+                { en: "A: Good morning! How are you?\nB: I'm fine, thanks! And you?", es: "A: ¡Buenos días! ¿Cómo estás?\nB: ¡Estoy bien, gracias! ¿Y tú?" },
+                { en: "A: Hi! How are you doing?\nB: Pretty good, thanks!", es: "A: ¡Hola! ¿Cómo te va?\nB: ¡Bastante bien, gracias!" },
+              ]},
+              { title: "💡 TIP", type: "tip", text: "Use 'Hi' or 'Hey' with friends. Use 'Good morning/afternoon' with teachers, bosses or strangers." }
+            ]
+          },
+          exam: [
+            { q: "¿Cómo se dice 'Buenos días' en inglés?", opts: ["Good morning","Good night","Good evening","Hello"], ans: 0 },
+            { q: "¿Qué significa 'How are you?'", opts: ["¿Quién eres?","¿Cómo te llamas?","¿Cómo estás?","¿Dónde estás?"], ans: 2 },
+            { q: "¿Cuál es el saludo INFORMAL?", opts: ["Good morning","Good afternoon","Hey!","Good evening"], ans: 2 },
+            { q: "A: 'Hello!' — B: ___", opts: ["Good night!","Hi! How are you?","My name is Ana","I am fine"], ans: 1 },
+            { q: "'Good night' se usa para:", opts: ["Saludar de mañana","Saludar en la tarde","Despedirse al dormir","Saludar formalmente"], ans: 2 },
+          ]
+        },
+        {
+          id: "u1l2", title: "Introducing Yourself", icon: "🙋", xp: 25,
+          content: {
+            intro: "Now let's learn how to tell people who you are — your name, age, nationality and more!",
+            sections: [
+              { title: "MY INFORMATION", type: "vocab", items: [
+                { en: "My name is ___", pron: "/maɪ neɪm ɪz/", es: "Mi nombre es ___" },
+                { en: "I am ___ years old", pron: "/aɪ æm/", es: "Tengo ___ años" },
+                { en: "I am from ___", pron: "/aɪ æm frɒm/", es: "Soy de ___" },
+                { en: "I live in ___", pron: "/aɪ lɪv ɪn/", es: "Vivo en ___" },
+                { en: "Nice to meet you!", pron: "/naɪs tə miːt juː/", es: "¡Mucho gusto!" },
+              ]},
+              { title: "ASKING QUESTIONS", type: "vocab", items: [
+                { en: "What is your name?", pron: "/wɒt ɪz jɔːr neɪm/", es: "¿Cómo te llamas?" },
+                { en: "How old are you?", pron: "/haʊ oʊld ɑːr juː/", es: "¿Cuántos años tienes?" },
+                { en: "Where are you from?", pron: "/wer ɑːr juː frɒm/", es: "¿De dónde eres?" },
+                { en: "Where do you live?", pron: "/wer duː juː lɪv/", es: "¿Dónde vives?" },
+              ]},
+              { title: "EXAMPLE DIALOGUES", type: "examples", items: [
+                { en: "A: What is your name?\nB: My name is Carlos. Nice to meet you!\nA: Nice to meet you too!", es: "A: ¿Cómo te llamas?\nB: Me llamo Carlos. ¡Mucho gusto!\nA: ¡Igualmente!" },
+                { en: "A: How old are you?\nB: I am 15 years old.\nA: Where are you from?\nB: I am from Peru.", es: "A: ¿Cuántos años tienes?\nB: Tengo 15 años.\nA: ¿De dónde eres?\nB: Soy de Perú." },
+              ]},
+              { title: "💡 TIP", type: "tip", text: "In English, 'I' is ALWAYS a capital letter. Always! I am, I live, I have..." }
+            ]
+          },
+          exam: [
+            { q: "¿Cómo preguntas el nombre de alguien?", opts: ["Where are you from?","What is your name?","How old are you?","Nice to meet you!"], ans: 1 },
+            { q: "¿Cómo dices '¡Mucho gusto!' en inglés?", opts: ["See you later!","Good morning!","Nice to meet you!","Thank you!"], ans: 2 },
+            { q: "Completa: 'My name ___ Carlos'", opts: ["are","am","is","be"], ans: 2 },
+            { q: "¿Qué significa 'I am from Peru'?", opts: ["Vivo en Perú","Soy de Perú","Voy a Perú","Conozco Perú"], ans: 1 },
+            { q: "'How old are you?' — You respond:", opts: ["I am from Lima","I am a student","I am 14 years old","My name is Ana"], ans: 2 },
+          ]
+        }
+      ],
+      exam: [
+        { q: "Ana says to her teacher at 8am: '___'", opts: ["Good night!","Good evening!","Good morning!","See you!"], ans: 2 },
+        { q: "¿Cuál oración presenta correctamente a alguien?", opts: ["My name are Pedro","Me name is Pedro","My name is Pedro","I name Pedro"], ans: 2 },
+        { q: "'Nice to meet you' — La respuesta correcta es:", opts: ["Good morning!","Nice to meet you too!","I am fine!","See you later!"], ans: 1 },
+        { q: "Para preguntar de dónde es alguien usas:", opts: ["How old are you?","What is your name?","Where are you from?","How are you?"], ans: 2 },
+        { q: "'I ___ 16 years old'", opts: ["are","is","be","am"], ans: 3 },
+        { q: "¿Qué saludo usa Tom con su jefe a las 3pm?", opts: ["Hey boss!","Good morning boss!","Good afternoon boss!","Hi boss!"], ans: 2 },
+        { q: "¿Cuál es INFORMAL?", opts: ["Good morning","Good afternoon","Hey! How are you?","Good evening"], ans: 2 },
+        { q: "'Where do you ___?' — pregunta dónde vives", opts: ["from","live","go","stay"], ans: 1 },
+      ]
+    },
+
+    /* ══════════════════════ UNIDAD 2 ══════════════════════ */
+    {
+      id: "u2", title: "Numbers & Colors", icon: "🔢",
+      lessons: [
+        {
+          id: "u2l1", title: "Numbers 1-20", icon: "🔢", xp: 20,
+          content: {
+            intro: "Numbers are essential in English! Let's learn to count from 1 to 20.",
+            sections: [
+              { title: "NUMBERS 1-10", type: "vocab", items: [
+                { en: "One / Two / Three", pron: "/wʌn/ /tuː/ /θriː/", es: "1 / 2 / 3" },
+                { en: "Four / Five / Six", pron: "/fɔːr/ /faɪv/ /sɪks/", es: "4 / 5 / 6" },
+                { en: "Seven / Eight / Nine", pron: "/ˈsevən/ /eɪt/ /naɪn/", es: "7 / 8 / 9" },
+                { en: "Ten", pron: "/ten/", es: "10" },
+              ]},
+              { title: "NUMBERS 11-20", type: "vocab", items: [
+                { en: "Eleven / Twelve", pron: "/ɪˈlevən/ /twelv/", es: "11 / 12" },
+                { en: "Thirteen / Fourteen / Fifteen", pron: "/-tiːn/", es: "13 / 14 / 15" },
+                { en: "Sixteen / Seventeen / Eighteen", pron: "/-tiːn/", es: "16 / 17 / 18" },
+                { en: "Nineteen / Twenty", pron: "/ˈnaɪntiːn/ /ˈtwenti/", es: "19 / 20" },
+              ]},
+              { title: "EXAMPLE USES", type: "examples", items: [
+                { en: "I have two cats.", es: "Tengo dos gatos." },
+                { en: "She is fifteen years old.", es: "Ella tiene quince años." },
+                { en: "There are twenty students in my class.", es: "Hay veinte estudiantes en mi clase." },
+              ]},
+              { title: "💡 TIP", type: "tip", text: "Numbers 13-19 end in '-teen'. Twenty is special — memorize it! After 20: twenty-one, twenty-two, etc." }
+            ]
+          },
+          exam: [
+            { q: "¿Cómo se escribe el número 15?", opts: ["Fifty","Fifteen","Five","Fiveteen"], ans: 1 },
+            { q: "¿Cuánto es 'twelve'?", opts: ["20","11","12","13"], ans: 2 },
+            { q: "'I have ___ fingers.' (10)", opts: ["teen","twelve","ten","two"], ans: 2 },
+            { q: "¿Cómo se dice 17?", opts: ["Seven","Seventy","Seventeen","Seventh"], ans: 2 },
+            { q: "One, two, three, ___, five", opts: ["four","forty","fore","for"], ans: 0 },
+          ]
+        },
+        {
+          id: "u2l2", title: "Colors & Descriptions", icon: "🎨", xp: 20,
+          content: {
+            intro: "Colors help us describe the world around us! Let's paint our English vocabulary.",
+            sections: [
+              { title: "BASIC COLORS", type: "vocab", items: [
+                { en: "Red / Blue / Yellow", pron: "/red/ /bluː/ /ˈjeloʊ/", es: "Rojo / Azul / Amarillo" },
+                { en: "Green / Orange / Purple", pron: "/ɡriːn/ /ˈɒrɪndʒ/ /ˈpɜːrpl/", es: "Verde / Naranja / Morado" },
+                { en: "Black / White / Brown", pron: "/blæk/ /waɪt/ /braʊn/", es: "Negro / Blanco / Marrón" },
+                { en: "Pink / Grey / Gold", pron: "/pɪŋk/ /ɡreɪ/ /ɡoʊld/", es: "Rosa / Gris / Dorado" },
+              ]},
+              { title: "USING COLORS", type: "examples", items: [
+                { en: "The sky is blue.", es: "El cielo es azul." },
+                { en: "My car is red.", es: "Mi auto es rojo." },
+                { en: "What color is it? — It's green!", es: "¿De qué color es? — ¡Es verde!" },
+                { en: "I like purple and gold.", es: "Me gusta el morado y el dorado." },
+              ]},
+              { title: "💡 TIP", type: "tip", text: "In English, adjectives go BEFORE the noun: 'a red car' (NOT 'a car red'). Colors are adjectives!" }
+            ]
+          },
+          exam: [
+            { q: "¿Cómo se dice 'amarillo' en inglés?", opts: ["Orange","Green","Yellow","Blue"], ans: 2 },
+            { q: "The sky is ___", opts: ["red","blue","green","black"], ans: 1 },
+            { q: "¿Cuál es el orden correcto?", opts: ["a car red","red a car","a red car","car red a"], ans: 2 },
+            { q: "'What color is it?' — respuesta correcta:", opts: ["It is blue!","Blue it is!","Is blue it!","It blue is!"], ans: 0 },
+            { q: "¿Qué color es 'negro' en inglés?", opts: ["White","Brown","Grey","Black"], ans: 3 },
+          ]
+        }
+      ],
+      exam: [
+        { q: "Count: one, ___, three, four", opts: ["eleven","two","twoo","twice"], ans: 1 },
+        { q: "'The grass is ___'", opts: ["red","blue","green","orange"], ans: 2 },
+        { q: "Dieciséis en inglés:", opts: ["Sixty","Six","Sixteen","Sixty-six"], ans: 2 },
+        { q: "¿Cuál usa el color correctamente?", opts: ["A car blue","Blue a car","A blue car","Car a blue"], ans: 2 },
+        { q: "One + one = ___", opts: ["Three","One","Two","Four"], ans: 2 },
+        { q: "¿Qué color es el sol?", opts: ["Purple","Yellow","Red","Green"], ans: 1 },
+        { q: "Veinte en inglés:", opts: ["Twelve","Tweny","Twenty","Twen"], ans: 2 },
+        { q: "My favorite color ___ red.", opts: ["are","am","be","is"], ans: 3 },
+      ]
+    },
+
+    /* ══════════════════════ UNIDAD 3 ══════════════════════ */
+    {
+      id: "u3", title: "My Family & Friends", icon: "👨‍👩‍👧‍👦",
+      lessons: [
+        {
+          id: "u3l1", title: "Family Members", icon: "👨‍👩‍👧", xp: 25,
+          content: {
+            intro: "Family is very important. Let's learn the English words for family members!",
+            sections: [
+              { title: "IMMEDIATE FAMILY", type: "vocab", items: [
+                { en: "Mother / Mom", pron: "/ˈmʌðər/ /mɒm/", es: "Madre / Mamá" },
+                { en: "Father / Dad", pron: "/ˈfɑːðər/ /dæd/", es: "Padre / Papá" },
+                { en: "Brother / Sister", pron: "/ˈbrʌðər/ /ˈsɪstər/", es: "Hermano / Hermana" },
+                { en: "Son / Daughter", pron: "/sʌn/ /ˈdɔːtər/", es: "Hijo / Hija" },
+              ]},
+              { title: "EXTENDED FAMILY", type: "vocab", items: [
+                { en: "Grandmother / Grandfather", pron: "/ˈɡrænmʌðər/ /ˈɡrænfɑːðər/", es: "Abuela / Abuelo" },
+                { en: "Aunt / Uncle", pron: "/ænt/ /ˈʌŋkl/", es: "Tía / Tío" },
+                { en: "Cousin", pron: "/ˈkʌzn/", es: "Primo/a" },
+                { en: "Parents", pron: "/ˈperənts/", es: "Padres (mamá y papá)" },
+              ]},
+              { title: "TALKING ABOUT FAMILY", type: "examples", items: [
+                { en: "I have one brother and two sisters.", es: "Tengo un hermano y dos hermanas." },
+                { en: "My mother's name is María.", es: "El nombre de mi madre es María." },
+                { en: "Do you have any brothers or sisters?", es: "¿Tienes hermanos o hermanas?" },
+              ]},
+              { title: "💡 TIP", type: "tip", text: "Use 'have/has' for family: 'I have a sister' / 'She has two brothers'. Plural: brothers, sisters, cousins." }
+            ]
+          },
+          exam: [
+            { q: "¿Cómo se dice 'hermana' en inglés?", opts: ["Brother","Cousin","Sister","Daughter"], ans: 2 },
+            { q: "¿Qué significa 'parents'?", opts: ["Primos","Padres (mamá y papá)","Abuelos","Tíos"], ans: 1 },
+            { q: "'I ___ two brothers.'", opts: ["is","has","have","are"], ans: 2 },
+            { q: "¿Cómo se dice 'abuelo'?", opts: ["Uncle","Grandfather","Father","Dad"], ans: 1 },
+            { q: "La hija de mis tíos es mi ___", opts: ["Sister","Daughter","Cousin","Aunt"], ans: 2 },
+          ]
+        },
+        {
+          id: "u3l2", title: "Describing People", icon: "🌟", xp: 25,
+          content: {
+            intro: "How do you describe yourself and others? Let's learn adjectives for people!",
+            sections: [
+              { title: "PHYSICAL DESCRIPTIONS", type: "vocab", items: [
+                { en: "Tall / Short", pron: "/tɔːl/ /ʃɔːrt/", es: "Alto/a / Bajo/a" },
+                { en: "Thin / Fat / Slim", pron: "/θɪn/ /fæt/ /slɪm/", es: "Delgado / Gordo / Esbelto" },
+                { en: "Young / Old", pron: "/jʌŋ/ /oʊld/", es: "Joven / Viejo" },
+                { en: "Beautiful / Handsome / Pretty", pron: "/ˈbjuːtɪfl/ /ˈhænsəm/ /ˈprɪti/", es: "Hermosa / Guapo / Bonita" },
+              ]},
+              { title: "PERSONALITY TRAITS", type: "vocab", items: [
+                { en: "Kind / Nice / Friendly", pron: "/kaɪnd/ /naɪs/ /ˈfrendli/", es: "Amable / Agradable / Amistoso" },
+                { en: "Smart / Intelligent", pron: "/smɑːrt/ /ɪnˈtelɪdʒənt/", es: "Listo / Inteligente" },
+                { en: "Funny / Serious", pron: "/ˈfʌni/ /ˈsɪriəs/", es: "Gracioso / Serio" },
+                { en: "Shy / Brave", pron: "/ʃaɪ/ /breɪv/", es: "Tímido / Valiente" },
+              ]},
+              { title: "DESCRIBING WITH 'TO BE'", type: "examples", items: [
+                { en: "She is tall and beautiful.", es: "Ella es alta y hermosa." },
+                { en: "My brother is funny and smart.", es: "Mi hermano es gracioso e inteligente." },
+                { en: "He is not shy, he is brave!", es: "Él no es tímido, ¡es valiente!" },
+              ]},
+              { title: "💡 TIP", type: "tip", text: "To be NEGATIVE: I am NOT tall. She is NOT old. He is NOT shy. Use 'not' after 'am/is/are'!" }
+            ]
+          },
+          exam: [
+            { q: "¿Cómo se dice 'inteligente'?", opts: ["Funny","Smart","Kind","Brave"], ans: 1 },
+            { q: "'She ___ tall and pretty.'", opts: ["are","have","am","is"], ans: 3 },
+            { q: "¿Qué significa 'shy'?", opts: ["Valiente","Gracioso","Tímido","Amable"], ans: 2 },
+            { q: "Forma NEGATIVA: 'He ___ old.'", opts: ["is not","not is","no is","isn't be"], ans: 0 },
+            { q: "¿Cuál describe PERSONALIDAD?", opts: ["Tall","Blue eyes","Friendly","Short"], ans: 2 },
+          ]
+        }
+      ],
+      exam: [
+        { q: "¿Cómo se dice 'tío'?", opts: ["Cousin","Brother","Uncle","Grandfather"], ans: 2 },
+        { q: "She is ___ and kind.", opts: ["beautiful","beauty","beautifully","beautious"], ans: 0 },
+        { q: "'I have ___ sister.' (1 hermana)", opts: ["a one","a","one a","the"], ans: 1 },
+        { q: "¿Opuesto de 'tall'?", opts: ["Big","Fat","Short","Thin"], ans: 2 },
+        { q: "'My ___ name is María.' (madre)", opts: ["father's","brother's","sister's","mother's"], ans: 3 },
+        { q: "He is ___ shy. He is brave!", opts: ["no","not","don't","doesn't"], ans: 1 },
+        { q: "Hermano en inglés:", opts: ["Sister","Cousin","Brother","Father"], ans: 2 },
+        { q: "¿Cuál oración es CORRECTA?", opts: ["She funny is","She is funny","Is she funny be","Funny she is"], ans: 1 },
+      ]
+    },
+
+    /* ══════════════════════ UNIDAD 4 ══════════════════════ */
+    {
+      id: "u4", title: "Daily Routines", icon: "📅",
+      lessons: [
+        {
+          id: "u4l1", title: "Present Simple Tense", icon: "⏰", xp: 30,
+          content: {
+            intro: "The Present Simple is used for habits, routines and facts. It's the most important tense in English!",
+            sections: [
+              { title: "PRESENT SIMPLE STRUCTURE", type: "vocab", items: [
+                { en: "I / You / We / They + verb", pron: "", es: "Yo / Tú / Nosotros / Ellos + verbo" },
+                { en: "He / She / It + verb + S", pron: "", es: "Él / Ella / Eso + verbo + S" },
+                { en: "I eat. / She eats.", pron: "/iːt/ /iːts/", es: "Yo como. / Ella come." },
+                { en: "They work. / He works.", pron: "/wɜːrk/ /wɜːrks/", es: "Ellos trabajan. / Él trabaja." },
+              ]},
+              { title: "COMMON VERBS", type: "vocab", items: [
+                { en: "Wake up / Sleep", pron: "/weɪk ʌp/ /sliːp/", es: "Despertar / Dormir" },
+                { en: "Eat / Drink", pron: "/iːt/ /drɪŋk/", es: "Comer / Beber" },
+                { en: "Go to school / Work", pron: "/ɡoʊ tə skuːl/ /wɜːrk/", es: "Ir al colegio / Trabajar" },
+                { en: "Study / Play / Watch TV", pron: "/ˈstʌdi/ /pleɪ/ /wɒtʃ/", es: "Estudiar / Jugar / Ver TV" },
+              ]},
+              { title: "EXAMPLES", type: "examples", items: [
+                { en: "I wake up at 7 o'clock every day.", es: "Me despierto a las 7 todos los días." },
+                { en: "She studies English every night.", es: "Ella estudia inglés todas las noches." },
+                { en: "We play football on Sundays.", es: "Jugamos fútbol los domingos." },
+              ]},
+              { title: "💡 TIP", type: "tip", text: "When the subject is he/she/it, add -S or -ES to the verb! Eat→eats, watch→watches, study→studies" }
+            ]
+          },
+          exam: [
+            { q: "'She ___ English every day.'", opts: ["study","studies","studys","studying"], ans: 1 },
+            { q: "¿Cuándo usamos el Present Simple?", opts: ["Acciones pasadas","Hábitos y rutinas","Acciones del futuro","Acciones en progreso"], ans: 1 },
+            { q: "'I ___ to school at 7am.'", opts: ["goes","going","go","went"], ans: 2 },
+            { q: "¿Cuál es CORRECTA?", opts: ["He eat lunch","He eats lunch","He eating lunch","He eaten lunch"], ans: 1 },
+            { q: "Verb: WATCH → He ___", opts: ["watchs","watchies","watches","watch"], ans: 2 },
+          ]
+        },
+        {
+          id: "u4l2", title: "Time & Daily Activities", icon: "🕐", xp: 30,
+          content: {
+            intro: "Let's talk about time and what we do each day! Schedules and routines in English.",
+            sections: [
+              { title: "TELLING TIME", type: "vocab", items: [
+                { en: "It's one o'clock / 1:00", pron: "/wʌn əˈklɒk/", es: "Es la una en punto" },
+                { en: "It's half past two / 2:30", pron: "/hɑːf pɑːst tuː/", es: "Son las dos y media" },
+                { en: "It's quarter past three / 3:15", pron: "/ˈkwɔːrtər pɑːst/", es: "Son las tres y cuarto" },
+                { en: "At 7 o'clock / In the morning", pron: "", es: "A las 7 / Por la mañana" },
+              ]},
+              { title: "DAILY ROUTINE PHRASES", type: "vocab", items: [
+                { en: "I wake up at 6am", pron: "", es: "Me despierto a las 6am" },
+                { en: "I have breakfast / lunch / dinner", pron: "", es: "Desayuno / almuerzo / ceno" },
+                { en: "I go to bed at 10pm", pron: "", es: "Me voy a dormir a las 10pm" },
+                { en: "Every day / On Mondays / At the weekend", pron: "", es: "Todos los días / Los lunes / El fin de semana" },
+              ]},
+              { title: "MY ROUTINE", type: "examples", items: [
+                { en: "I wake up at 7:00. I have breakfast at 7:30.", es: "Me despierto a las 7:00. Desayuno a las 7:30." },
+                { en: "I go to school at 8:00 every morning.", es: "Voy al colegio a las 8:00 cada mañana." },
+                { en: "In the evening, I study and watch TV.", es: "Por la tarde, estudio y veo TV." },
+              ]},
+              { title: "💡 TIP", type: "tip", text: "Use 'at' for specific times (at 7am), 'in' for morning/afternoon/evening, 'on' for days (on Monday)!" }
+            ]
+          },
+          exam: [
+            { q: "¿Cómo se dice '2:30' en inglés?", opts: ["Half past three","Two thirty","Half past two","Quarter past two"], ans: 2 },
+            { q: "'I go to school ___ 8 o'clock.'", opts: ["in","on","at","by"], ans: 2 },
+            { q: "¿Qué hace 'have breakfast'?", opts: ["Comer almuerzo","Comer cena","Tomar desayuno","Tomar merienda"], ans: 2 },
+            { q: "'___ the evening, I study.'", opts: ["At","On","In","By"], ans: 2 },
+            { q: "I go to school ___ Mondays.", opts: ["at","in","on","by"], ans: 2 },
+          ]
+        }
+      ],
+      exam: [
+        { q: "'She ___ TV every night.' (ver)", opts: ["watch","watchs","watches","watching"], ans: 2 },
+        { q: "¿Cómo se dice 'en punto' en las horas?", opts: ["half past","o'clock","quarter past","past"], ans: 1 },
+        { q: "'I have lunch ___ noon.'", opts: ["on","in","at","by"], ans: 2 },
+        { q: "¿Cuál usa CORRECTLY el present simple?", opts: ["She gos","He go","They goes","He goes"], ans: 3 },
+        { q: "My sister ___ up at 6am.", opts: ["wake","wakes","waking","woke"], ans: 1 },
+        { q: "¿Cuándo usamos 'on'?", opts: ["Horas (at 7)","Mañana/tarde","Días (Monday)","Estaciones"], ans: 2 },
+        { q: "It's ___ past three. (3:15)", opts: ["half","quarter","three","thirty"], ans: 1 },
+        { q: "We ___ football on Sundays.", opts: ["plays","playing","play","played"], ans: 2 },
+      ]
+    },
+
+    /* ══════════════════════ UNIDAD 5 ══════════════════════ */
+    {
+      id: "u5", title: "Food & Drinks", icon: "🍎",
+      lessons: [
+        {
+          id: "u5l1", title: "Food Vocabulary", icon: "🍕", xp: 30,
+          content: {
+            intro: "Food is a universal language! Let's learn how to talk about what we eat and drink in English.",
+            sections: [
+              { title: "FRUITS & VEGETABLES", type: "vocab", items: [
+                { en: "Apple / Banana / Orange", pron: "/ˈæpl/ /bəˈnɑːnə/ /ˈɒrɪndʒ/", es: "Manzana / Plátano / Naranja" },
+                { en: "Tomato / Potato / Carrot", pron: "/təˈmeɪtoʊ/ /pəˈteɪtoʊ/ /ˈkærət/", es: "Tomate / Papa / Zanahoria" },
+                { en: "Lettuce / Onion / Garlic", pron: "/ˈletɪs/ /ˈʌnjən/ /ˈɡɑːrlɪk/", es: "Lechuga / Cebolla / Ajo" },
+              ]},
+              { title: "MEALS & DRINKS", type: "vocab", items: [
+                { en: "Bread / Rice / Pasta", pron: "/bred/ /raɪs/ /ˈpæstə/", es: "Pan / Arroz / Pasta" },
+                { en: "Chicken / Fish / Beef", pron: "/ˈtʃɪkɪn/ /fɪʃ/ /biːf/", es: "Pollo / Pescado / Res/Carne" },
+                { en: "Water / Juice / Milk / Coffee", pron: "/ˈwɔːtər/ /dʒuːs/ /mɪlk/ /ˈkɒfi/", es: "Agua / Jugo / Leche / Café" },
+                { en: "Tea / Soda / Beer", pron: "/tiː/ /ˈsoʊdə/ /bɪər/", es: "Té / Gaseosa / Cerveza" },
+              ]},
+              { title: "TALKING ABOUT FOOD", type: "examples", items: [
+                { en: "I like pizza but I don't like fish.", es: "Me gusta la pizza pero no me gusta el pescado." },
+                { en: "What would you like to eat? — I'd like a sandwich.", es: "¿Qué te gustaría comer? — Me gustaría un sándwich." },
+                { en: "Do you want some coffee? — Yes, please! / No, thank you.", es: "¿Quieres café? — ¡Sí, por favor! / No, gracias." },
+              ]},
+              { title: "💡 TIP", type: "tip", text: "'I like' = me gusta en general. 'I would like' (I'd like) = me gustaría ahora. 'Do you want...?' is more informal." }
+            ]
+          },
+          exam: [
+            { q: "¿Cómo se dice 'manzana' en inglés?", opts: ["Orange","Banana","Apple","Avocado"], ans: 2 },
+            { q: "'Do you want some ___?' (agua)", opts: ["milk","water","juice","coffee"], ans: 1 },
+            { q: "Para decir que NO te gusta algo:", opts: ["I like not fish","I no like fish","I don't like fish","I not fish"], ans: 2 },
+            { q: "'I ___ like a sandwich.' (pedido educado)", opts: ["want","would","do","could"], ans: 1 },
+            { q: "¿Cuál es una BEBIDA?", opts: ["Chicken","Bread","Juice","Carrot"], ans: 2 },
+          ]
+        },
+        {
+          id: "u5l2", title: "At the Restaurant", icon: "🍽️", xp: 35,
+          content: {
+            intro: "Ordering food in English is a very practical skill. Let's learn useful phrases for restaurants and cafes!",
+            sections: [
+              { title: "RESTAURANT PHRASES", type: "vocab", items: [
+                { en: "A table for two, please.", pron: "/ə ˈteɪbl fər tuː/", es: "Una mesa para dos, por favor." },
+                { en: "Can I see the menu?", pron: "/kæn aɪ siː ðə ˈmenjuː/", es: "¿Puedo ver el menú?" },
+                { en: "I'd like to order...", pron: "/aɪd laɪk tə ˈɔːrdər/", es: "Quisiera ordenar..." },
+                { en: "Can I have the bill, please?", pron: "/kæn aɪ hæv ðə bɪl/", es: "¿Me puede dar la cuenta, por favor?" },
+              ]},
+              { title: "DESCRIBING FOOD", type: "vocab", items: [
+                { en: "Delicious / Tasty / Yummy", pron: "/dɪˈlɪʃəs/ /ˈteɪsti/ /ˈjʌmi/", es: "Delicioso / Sabroso / Rico" },
+                { en: "Salty / Sweet / Spicy / Sour", pron: "/ˈsɔːlti/ /swiːt/ /ˈspaɪsi/ /saʊər/", es: "Salado / Dulce / Picante / Ácido" },
+                { en: "Hot / Cold / Warm", pron: "/hɒt/ /koʊld/ /wɔːrm/", es: "Caliente / Frío / Tibio" },
+              ]},
+              { title: "DIALOGUE AT A RESTAURANT", type: "examples", items: [
+                { en: "Waiter: Are you ready to order?\nCustomer: Yes! I'd like the pasta, please.\nWaiter: Anything to drink?\nCustomer: A glass of water, please.", es: "Mesero: ¿Listos para ordenar?\nCliente: ¡Sí! Quisiera la pasta, por favor.\nMesero: ¿Algo para tomar?\nCliente: Un vaso de agua, por favor." },
+              ]},
+              { title: "💡 TIP", type: "tip", text: "In English restaurants, say 'Excuse me!' to call the waiter — NOT 'Hey!' That's rude. Use 'Could I have...?' for polite requests." }
+            ]
+          },
+          exam: [
+            { q: "Para pedir la cuenta dices:", opts: ["I want money","Can I have the bill?","Give me the bill","Money please"], ans: 1 },
+            { q: "¿Cómo describes algo muy sabroso?", opts: ["Spicy","Sour","Delicious","Cold"], ans: 2 },
+            { q: "'A table ___ two, please.'", opts: ["of","to","for","from"], ans: 2 },
+            { q: "El mesero pregunta '___?' para tomar la orden.", opts: ["Are you hungry?","Are you ready to order?","What do you want?","Do you like food?"], ans: 1 },
+            { q: "'Could I ___ the menu, please?'", opts: ["see","want","like","have"], ans: 3 },
+          ]
+        }
+      ],
+      exam: [
+        { q: "¿Cómo se dice 'pollo' en inglés?", opts: ["Fish","Beef","Chicken","Pork"], ans: 2 },
+        { q: "'I ___ like some coffee.' (forma educada)", opts: ["want","would","do","could"], ans: 1 },
+        { q: "Para llamar al mesero dices:", opts: ["Hey you!","Waiter waiter!","Excuse me!","Come here!"], ans: 2 },
+        { q: "¿Cuál NO es una fruta?", opts: ["Apple","Orange","Carrot","Banana"], ans: 2 },
+        { q: "The soup is ___. (caliente)", opts: ["cold","warm","hot","spicy"], ans: 2 },
+        { q: "'I don't like ___.' (no me gusta el picante)", opts: ["spicy food","sweet food","hot food","cold food"], ans: 0 },
+        { q: "Para pedir algo educadamente:", opts: ["Give me water","I want water","Could I have some water?","Water!"], ans: 2 },
+        { q: "'The pizza is ___!' (deliciosa)", opts: ["sour","spicy","delicious","cold"], ans: 2 },
+      ]
+    },
+
+    /* ══════════════════════ UNIDAD 6 ══════════════════════ */
+    {
+      id: "u6", title: "Places & Directions", icon: "🗺️",
+      lessons: [
+        {
+          id: "u6l1", title: "Places in the City", icon: "🏙️", xp: 30,
+          content: {
+            intro: "Let's explore the city in English! Knowing the names of places will help you navigate and communicate.",
+            sections: [
+              { title: "PLACES IN TOWN", type: "vocab", items: [
+                { en: "School / University", pron: "/skuːl/ /ˌjuːnɪˈvɜːrsɪti/", es: "Colegio / Universidad" },
+                { en: "Hospital / Pharmacy", pron: "/ˈhɒspɪtl/ /ˈfɑːrməsi/", es: "Hospital / Farmacia" },
+                { en: "Supermarket / Market", pron: "/ˈsuːpərmɑːrkɪt/ /ˈmɑːrkɪt/", es: "Supermercado / Mercado" },
+                { en: "Bank / Post office", pron: "/bæŋk/ /poʊst ˈɒfɪs/", es: "Banco / Correos" },
+                { en: "Park / Library / Museum", pron: "/pɑːrk/ /ˈlaɪbrəri/ /mjuːˈziːəm/", es: "Parque / Biblioteca / Museo" },
+                { en: "Restaurant / Café / Hotel", pron: "/ˈrestrɒnt/ /kæˈfeɪ/ /hoʊˈtel/", es: "Restaurante / Café / Hotel" },
+              ]},
+              { title: "THERE IS / THERE ARE", type: "vocab", items: [
+                { en: "There is a bank near here.", pron: "/ðer ɪz/", es: "Hay un banco cerca de aquí." },
+                { en: "There are two parks in my city.", pron: "/ðer ɑːr/", es: "Hay dos parques en mi ciudad." },
+                { en: "Is there a hospital?", pron: "/ɪz ðer ə/", es: "¿Hay un hospital?" },
+              ]},
+              { title: "EXAMPLES", type: "examples", items: [
+                { en: "There is a supermarket on Main Street.", es: "Hay un supermercado en la calle principal." },
+                { en: "Is there a pharmacy near here? Yes, there is!", es: "¿Hay una farmacia cerca? ¡Sí, hay una!" },
+                { en: "There are many restaurants in the city center.", es: "Hay muchos restaurantes en el centro de la ciudad." },
+              ]},
+              { title: "💡 TIP", type: "tip", text: "There IS (singular): There is a school. There ARE (plural): There are two schools. ¡El verbo cambia con el número!" }
+            ]
+          },
+          exam: [
+            { q: "¿Cómo se dice 'biblioteca' en inglés?", opts: ["Museum","Park","Library","School"], ans: 2 },
+            { q: "'___ is a hospital near here.'", opts: ["There are","There is","Is there","Are there"], ans: 1 },
+            { q: "'There ___ three banks in my city.'", opts: ["is","are","be","has"], ans: 1 },
+            { q: "Para preguntar si HAY algo:", opts: ["Where is...?","Is there a...?","There is a...?","Has there...?"], ans: 1 },
+            { q: "¿Cuál es un lugar de la ciudad?", opts: ["Chicken","Library","Friendly","Tuesday"], ans: 1 },
+          ]
+        },
+        {
+          id: "u6l2", title: "Asking for Directions", icon: "🧭", xp: 35,
+          content: {
+            intro: "Getting lost? No problem! Learn how to ask for and give directions in English.",
+            sections: [
+              { title: "ASKING DIRECTIONS", type: "vocab", items: [
+                { en: "Excuse me, where is the bank?", pron: "/ɪkˈskjuːz miː/", es: "Disculpe, ¿dónde está el banco?" },
+                { en: "How do I get to...?", pron: "/haʊ duː aɪ ɡet tə/", es: "¿Cómo llego a...?" },
+                { en: "Is it far from here?", pron: "/ɪz ɪt fɑːr/", es: "¿Está lejos de aquí?" },
+                { en: "How long does it take?", pron: "/haʊ lɒŋ dʌz ɪt teɪk/", es: "¿Cuánto tiempo tarda?" },
+              ]},
+              { title: "GIVING DIRECTIONS", type: "vocab", items: [
+                { en: "Turn left / Turn right", pron: "/tɜːrn left/ /tɜːrn raɪt/", es: "Gira a la izquierda / a la derecha" },
+                { en: "Go straight ahead", pron: "/ɡoʊ streɪt əˈhed/", es: "Sigue recto / todo recto" },
+                { en: "Cross the street / Take the bus", pron: "/krɒs ðə striːt/", es: "Cruza la calle / Toma el autobús" },
+                { en: "It's next to / opposite / behind", pron: "/nekst tə/ /ˈɒpəzɪt/ /bɪˈhaɪnd/", es: "Está al lado de / enfrente de / detrás de" },
+              ]},
+              { title: "DIALOGUE: ASKING DIRECTIONS", type: "examples", items: [
+                { en: "A: Excuse me! Where is the nearest supermarket?\nB: Go straight ahead, then turn right. It's next to the park.\nA: How far is it?\nB: About five minutes on foot.", es: "A: ¡Disculpe! ¿Dónde está el supermercado más cercano?\nB: Sigue recto, luego gira a la derecha. Está al lado del parque.\nA: ¿Qué tan lejos está?\nB: Unos cinco minutos a pie." },
+              ]},
+              { title: "💡 TIP", type: "tip", text: "Always start with 'Excuse me!' when asking a stranger for directions. It's polite and people will be more willing to help!" }
+            ]
+          },
+          exam: [
+            { q: "Para pedir indicaciones a un extraño dices:", opts: ["Hey!","Listen!","Excuse me!","Hello sir!"], ans: 2 },
+            { q: "'Go ___ ahead.' (todo recto)", opts: ["left","right","straight","cross"], ans: 2 },
+            { q: "¿Qué significa 'Turn left'?", opts: ["Sigue recto","Gira a la derecha","Para aquí","Gira a la izquierda"], ans: 3 },
+            { q: "'It's ___ to the bank.' (al lado de)", opts: ["next","near","opposite","behind"], ans: 0 },
+            { q: "'___ do I get to the museum?'", opts: ["Where","What","How","When"], ans: 2 },
+          ]
+        }
+      ],
+      exam: [
+        { q: "¿Cómo se dice 'supermercado' en inglés?", opts: ["Market","Mall","Supermarket","Store"], ans: 2 },
+        { q: "'___ are three banks in my city.'", opts: ["There is","There are","Is there","Are there"], ans: 1 },
+        { q: "Para girar a la derecha:", opts: ["Turn left","Go straight","Turn right","Cross the street"], ans: 2 },
+        { q: "'Excuse me, ___ is the hospital?'", opts: ["what","how","where","when"], ans: 2 },
+        { q: "'It's ___ the park.' (enfrente del)", opts: ["next to","behind","opposite","near"], ans: 2 },
+        { q: "¿Qué significa 'Is it far from here?'", opts: ["¿Dónde está?","¿Está lejos?","¿Cómo llego?","¿Cuánto cuesta?"], ans: 1 },
+        { q: "'There ___ a museum on Park Street.'", opts: ["are","is","be","have"], ans: 1 },
+        { q: "Sinónimo de 'Go straight ahead':", opts: ["Turn left","Continue forward","Turn right","Stop here"], ans: 1 },
+      ]
+    },
   ]
 };
 
