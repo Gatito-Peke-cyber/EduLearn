@@ -58,7 +58,13 @@
       <!-- Info block -->
       <div class="profile-info">
         <div class="profile-tag" id="profile-tag">▸ JUGADOR</div>
-        <h1 class="profile-name" id="profile-name">INVITADO</h1>
+
+        <!-- ★ NUEVO: nombre con botón de edición -->
+        <div class="profile-name-row">
+          <h1 class="profile-name" id="profile-name">INVITADO</h1>
+          <button class="btn-edit-name" id="btn-edit-name" title="Editar nombre">✏️</button>
+        </div>
+
         <div class="profile-email" id="profile-email">—</div>
         <div class="level-row">
           <span class="level-chip">Nv. <span id="level-num">1</span></span>
@@ -114,7 +120,6 @@
     <!-- ===== RESUMEN ===== -->
     <section id="tab-resumen" class="tab-panel active">
       <div class="resumen-grid">
-        <!-- Stats cards -->
         <div class="stat-card">
           <div class="sc-icon">🎮</div>
           <div class="sc-val" id="rc-cursos">0</div>
@@ -139,14 +144,10 @@
           <div class="sc-key">Racha de Días</div>
           <div class="sc-bar"><div class="sc-bar-fill orange" id="rc-bar-racha" style="width:0%"></div></div>
         </div>
-
-        <!-- Radar / Areas -->
         <div class="resumen-areas">
           <h3 class="section-title-sm">🗺️ ÁREAS DE APRENDIZAJE</h3>
           <div class="areas-list" id="areas-list"></div>
         </div>
-
-        <!-- Recientes -->
         <div class="resumen-recientes">
           <h3 class="section-title-sm">⏱ ACTIVIDAD RECIENTE</h3>
           <div id="resumen-timeline"></div>
@@ -175,7 +176,6 @@
           </select>
         </div>
       </div>
-      <!-- RPG Inventory Grid -->
       <div class="inventory-grid" id="inventory-grid"></div>
     </section>
 
@@ -224,7 +224,6 @@
 
     <!-- ===== CALIFICACIONES ===== -->
     <section id="tab-calificaciones" class="tab-panel">
-      <!-- HUD de estadísticas -->
       <div class="calif-hud">
         <div class="calif-hud-title">▸ REPORTE DE MISIONES</div>
         <div class="calif-hud-stats">
@@ -254,16 +253,12 @@
           </div>
         </div>
       </div>
-
-      <!-- Filtro de calificaciones -->
       <div class="calif-filter-row">
         <button class="cf-btn cf-todos active" data-cf="">▸ TODOS</button>
         <button class="cf-btn cf-aprobado" data-cf="aprobado">🏆 APROBADOS</button>
         <button class="cf-btn cf-desaprobado" data-cf="desaprobado">💀 DESAPROBADOS</button>
         <button class="cf-btn cf-pendiente" data-cf="pendiente">⏳ PENDIENTES</button>
       </div>
-
-      <!-- Lista de calificaciones -->
       <div class="calif-list" id="calif-list"></div>
       <div class="calif-empty" id="calif-empty" style="display:none">
         <div class="ce-icon">📋</div>
@@ -310,6 +305,33 @@
 
   </div>
 </main>
+
+<!-- ★ NUEVO: MODAL EDITAR NOMBRE -->
+<div class="modal" id="name-edit-modal">
+  <div class="modal-dialog sm">
+    <button class="modal-close" id="name-edit-modal-close">✕</button>
+    <div class="modal-body">
+      <h3 class="modal-title">✏️ CAMBIAR NOMBRE</h3>
+      <p class="name-edit-hint">Tu nombre se mostrará en tu perfil y se guardará en todos tus dispositivos.</p>
+      <div class="name-edit-field">
+        <input
+          type="text"
+          id="name-edit-input"
+          class="name-edit-input"
+          placeholder="ESCRIBE TU NOMBRE..."
+          maxlength="24"
+          autocomplete="off"
+          spellcheck="false"
+        >
+        <span class="name-char-count" id="name-char-count">0/24</span>
+      </div>
+      <div class="name-edit-actions">
+        <button class="btn btn-name-cancel" id="name-edit-cancel">✕ CANCELAR</button>
+        <button class="btn btn-name-save" id="name-edit-save" disabled>✓ GUARDAR</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- AVATAR PICKER MODAL -->
 <div class="modal" id="avatar-modal">

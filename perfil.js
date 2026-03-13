@@ -1,15 +1,9 @@
 /* =====================================================
-   EduLearn — Perfil — JS v6.2
-   FIXES:
-   - Horas aprendidas: solo cursos completados/aprobados
-   - Rachas: seguimiento real por fecha local
-   - Misiones: reset real a hora local (medianoche/lunes/día 1)
-   - Misiones: cuenta regresiva en días, horas, minutos, segundos
-   - Misiones: funcionales y botón RECLAMAR solo cuando se ganó
-   - d02: rastreo real de secciones visitadas
-   - d06: timer real de 5 minutos en plataforma
-   - Insignias: usa horas corregidas
-   - w04: xp reward corregido (10,000,000 → 100)
+   EduLearn — Perfil — JS v6.3
+   NUEVAS FUNCIONALIDADES:
+   - Editar nombre de usuario (guardado en Firebase)
+   - Buzón: fechas en formato DD-MM-YYYY
+   - Buzón: mensajes con fecha de caducidad
    ===================================================== */
 'use strict';
 
@@ -70,7 +64,7 @@ const BADGES = [
   { id:'b24', icon:'🎁', name:'ESPECIAL EVENTO',    desc:'Participar en un taller temporal',        req:'talleres>=1',   xp:80,  cat:'evento'    },
 ];
 
-/* ---- MISSIONS (w04 xp CORREGIDO: 10000000 → 100) ---- */
+/* ---- MISSIONS ---- */
 const MISSION_DEF = {
   daily: [
     { id:'d01', name:'PRIMER CLIC',     desc:'Visita tu perfil hoy',               icon:'👤', prog:1, max:1,  xp:10, tipo:'daily' },
@@ -97,38 +91,71 @@ const MISSION_DEF = {
   ],
 };
 
-/* ---- BUZON MESSAGES ---- */
+/* ======================================================
+   ★ BUZÓN — con fechas reales y caducidad
+   expira: null = no caduca | ISO string = fecha límite
+   ====================================================== */
 const BUZON_MESSAGES = [
-  //{ id:'bz01', cat:'novedad',       icon:'🆕', title:'¡NUEVO CURSO DISPONIBLE!',
-    //text:'Se ha agregado "Inteligencia Artificial para Principiantes" a la plataforma. ¡Inscríbete ahora y recibe 50 XP extra de bienvenida!',
-    //fecha: new Date(Date.now() - 1*60*60*1000).toISOString() },
-  //{ id:'bz02', cat:'recordatorio',  icon:'⏰', title:'TALLER POR EXPIRAR',
-    //text:'El taller "Maratón de Mates" expira en menos de 24 horas. ¡No olvides completarlo para obtener tu insignia!',
-    //fecha: new Date(Date.now() - 3*60*60*1000).toISOString() },
-  { id:'bz03', cat:'logro',         icon:'🏆', title:'¡NUEVA INSIGNIA DESBLOQUEADA!',
+  {
+    id:'bz01', cat:'novedad', icon:'🆕', title:'¡NUEVO CURSO DISPONIBLE!',
+    text:'Se ha agregado "Inteligencia Artificial para Principiantes" a la plataforma. ¡Inscríbete ahora y recibe 50 XP extra de bienvenida!',
+    fecha: new Date(Date.now() - 1*60*60*1000).toISOString(),
+    expira: null,
+  },
+  {
+    id:'bz02', cat:'recordatorio', icon:'⏰', title:'TALLER POR EXPIRAR',
+    text:'El taller "Maratón de Mates" expira pronto. ¡No olvides completarlo para obtener tu insignia!',
+    fecha: new Date(Date.now() - 3*60*60*1000).toISOString(),
+    expira: new Date(Date.now() + 20*60*60*1000).toISOString(), // expira en ~20h
+  },
+  {
+    id:'bz03', cat:'logro', icon:'🏆', title:'¡NUEVA INSIGNIA DESBLOQUEADA!',
     text:'Has ganado la insignia "Primer Paso" por inscribirte en tu primer curso. ¡Sigue así!',
-    fecha: new Date(Date.now() - 1*24*60*60*1000).toISOString() },
-  //{ id:'bz04', cat:'sistema',       icon:'🔧', title:'MANTENIMIENTO PROGRAMADO',
-    //text:'Este domingo de 2:00 a 4:00 AM realizaremos mantenimiento. La plataforma podría no estar disponible durante ese horario.',
-    //fecha: new Date(Date.now() - 2*24*60*60*1000).toISOString() },
-  //{ id:'bz05', cat:'novedad',       icon:'🎉', title:'¡TEMPORADA DE PRIMAVERA!',
-    //text:'Comienza la temporada de primavera en EduLearn. ¡20 nuevos talleres y 3 insignias especiales de evento por tiempo limitado!',
-    //fecha: new Date(Date.now() - 2*24*60*60*1000).toISOString() },
-  { id:'bz06', cat:'recordatorio',  icon:'⚡', title:'MISIONES DIARIAS PENDIENTES',
+    fecha: new Date(Date.now() - 1*24*60*60*1000).toISOString(),
+    expira: null,
+  },
+  {
+    id:'bz04', cat:'sistema', icon:'🔧', title:'MANTENIMIENTO PROGRAMADO',
+    text:'Este domingo de 2:00 a 4:00 AM realizaremos mantenimiento. La plataforma podría no estar disponible durante ese horario.',
+    fecha: new Date(Date.now() - 2*24*60*60*1000).toISOString(),
+    expira: new Date(Date.now() - 12*60*60*1000).toISOString(), // ya caducó
+  },
+  {
+    id:'bz05', cat:'novedad', icon:'🎉', title:'¡TEMPORADA DE PRIMAVERA!',
+    text:'Comienza la temporada de primavera en EduLearn. ¡20 nuevos talleres y 3 insignias especiales de evento por tiempo limitado!',
+    fecha: new Date(Date.now() - 2*24*60*60*1000).toISOString(),
+    expira: new Date(Date.now() + 25*24*60*60*1000).toISOString(), // expira en 25 días
+  },
+  {
+    id:'bz06', cat:'recordatorio', icon:'⚡', title:'MISIONES DIARIAS PENDIENTES',
     text:'Tienes misiones diarias sin completar. ¡Completa tus misiones antes de medianoche para no perder la racha!',
-    fecha: new Date(Date.now() - 3*24*60*60*1000).toISOString() },
-  //{ id:'bz07', cat:'logro',         icon:'🌟', title:'¡RACHA DE 7 DÍAS!',
-    //text:'¡Felicitaciones! Has mantenido una racha de 7 días seguidos. Recibes la insignia "Racha x7" y 80 XP de bonificación.',
-    //fecha: new Date(Date.now() - 4*24*60*60*1000).toISOString() },
-  //{ id:'bz08', cat:'novedad',       icon:'📢', title:'ACTUALIZACIÓN DE PLATAFORMA v3.5',
-    //text:'Hemos lanzado la versión 3.5 con nuevo sistema de buzón, mejoras en el perfil y más de 30 cursos nuevos.',
-    //fecha: new Date(Date.now() - 5*24*60*60*1000).toISOString() },
-  //{ id:'bz09', cat:'sistema',       icon:'🔒', title:'NUEVA POLÍTICA DE PRIVACIDAD',
-    //text:'Hemos actualizado nuestra política de privacidad. Los cambios entran en vigor en 30 días.',
-    //fecha: new Date(Date.now() - 7*24*60*60*1000).toISOString() },
-  //{ id:'bz10', cat:'recordatorio',  icon:'🎯', title:'¡COMPLETA TU PERFIL!',
-    //text:'Tu perfil está al 60%. Agrega una foto de avatar y selecciona tus áreas de interés para obtener recomendaciones personalizadas.',
-    //fecha: new Date(Date.now() - 8*24*60*60*1000).toISOString() },
+    fecha: new Date(Date.now() - 3*24*60*60*1000).toISOString(),
+    expira: null,
+  },
+  {
+    id:'bz07', cat:'logro', icon:'🌟', title:'¡RACHA DE 7 DÍAS!',
+    text:'¡Felicitaciones! Has mantenido una racha de 7 días seguidos. Recibes la insignia "Racha x7" y 80 XP de bonificación.',
+    fecha: new Date(Date.now() - 4*24*60*60*1000).toISOString(),
+    expira: null,
+  },
+  {
+    id:'bz08', cat:'novedad', icon:'📢', title:'ACTUALIZACIÓN DE PLATAFORMA v3.5',
+    text:'Hemos lanzado la versión 3.5 con nuevo sistema de buzón, mejoras en el perfil y más de 30 cursos nuevos.',
+    fecha: new Date(Date.now() - 5*24*60*60*1000).toISOString(),
+    expira: null,
+  },
+  {
+    id:'bz09', cat:'sistema', icon:'🔒', title:'NUEVA POLÍTICA DE PRIVACIDAD',
+    text:'Hemos actualizado nuestra política de privacidad. Los cambios entran en vigor en 30 días.',
+    fecha: new Date(Date.now() - 7*24*60*60*1000).toISOString(),
+    expira: new Date(Date.now() + 23*24*60*60*1000).toISOString(), // expira en 23 días
+  },
+  {
+    id:'bz10', cat:'recordatorio', icon:'🎯', title:'¡COMPLETA TU PERFIL!',
+    text:'Tu perfil está al 60%. Agrega una foto de avatar y selecciona tus áreas de interés para obtener recomendaciones personalizadas.',
+    fecha: new Date(Date.now() - 8*24*60*60*1000).toISOString(),
+    expira: null,
+  },
 ];
 
 /* ---- AVATARS ---- */
@@ -173,6 +200,58 @@ function toast(msg, color='var(--cyan)'){
   t._tid = setTimeout(()=> t.classList.remove('show'), 2800);
 }
 
+/* ======================================================
+   ★ NUEVO: formatBuzonDate — fechas en DD-MM-YYYY
+   Para mensajes recientes (<24h) muestra tiempo relativo,
+   para el resto muestra la fecha exacta.
+   ====================================================== */
+function formatBuzonDate(iso) {
+  const d = new Date(iso);
+  const now = new Date();
+  const diffMs = now - d;
+  const diffMin = Math.floor(diffMs / 60000);
+  const diffH = Math.floor(diffMs / 3600000);
+
+  if (diffMin < 1)  return 'hace un momento';
+  if (diffMin < 60) return `hace ${diffMin}m`;
+  if (diffH < 24)   return `hace ${diffH}h`;
+
+  const day   = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year  = d.getFullYear();
+  return `${day}-${month}-${year}`;
+}
+
+/* ======================================================
+   ★ NUEVO: isBuzonExpired / getBuzonExpireInfo
+   Devuelve info de caducidad de un mensaje de buzón
+   ====================================================== */
+function isBuzonExpired(msg) {
+  if (!msg.expira) return false;
+  return new Date() > new Date(msg.expira);
+}
+
+function getBuzonExpireInfo(msg) {
+  if (!msg.expira) return null;
+  const now = new Date();
+  const exp = new Date(msg.expira);
+  if (now > exp) return { expired: true, label: 'CADUCADO' };
+
+  const diffMs = exp - now;
+  const diffH  = Math.floor(diffMs / 3600000);
+  const diffD  = Math.floor(diffH / 24);
+
+  let label;
+  if (diffD > 1)  label = `Caduca en ${diffD}d`;
+  else if (diffH >= 1) label = `Caduca en ${diffH}h`;
+  else {
+    const diffM = Math.floor(diffMs / 60000);
+    label = `Caduca en ${diffM}m`;
+  }
+  const urgent = diffH < 24;
+  return { expired: false, label, urgent };
+}
+
 function timeAgo(iso){
   const d = new Date(iso), now = new Date();
   const s = Math.floor((now - d) / 1000);
@@ -183,48 +262,28 @@ function timeAgo(iso){
   return d.toLocaleDateString('es-PE', {day:'2-digit',month:'short'});
 }
 
-/* ======================================================
-   ★ FIX 1: HORAS — solo cursos completados/aprobados
-   Antes se sumaban TODAS las horas de cursos inscritos
-   (incluyendo cursos en progreso que ya traen sus horas
-   totales), causando lecturas de 22h o 48h desde el día 1.
-   Ahora solo se cuentan cursos realmente terminados.
-   ====================================================== */
+/* ---- FIX: HORAS solo cursos completados/aprobados ---- */
 function getHorasAprendidas(enrolled) {
   return enrolled
     .filter(c => c.estado === 'completado' || c.aprobado === true)
     .reduce((a, c) => a + (c.horas || 0), 0);
 }
 
-/* ======================================================
-   ★ FIX 2: RACHA — seguimiento real por fecha local
-   Compara la última visita con hoy y ayer (hora local).
-   Si es un día nuevo consecutivo → incrementa.
-   Si se saltó un día → resetea a 1.
-   Si ya visitó hoy → no cambia nada.
-   ====================================================== */
+/* ---- FIX: RACHA por fecha local ---- */
 function updateRacha() {
   const p = getProfile();
-  const today = new Date().toDateString(); // Fecha local
+  const today = new Date().toDateString();
   const lastVisit = localStorage.getItem(LAST_VISIT_KEY);
-
-  if (lastVisit === today) return; // Ya se registró hoy, sin cambios
-
+  if (lastVisit === today) return;
   const ayer = new Date();
   ayer.setDate(ayer.getDate() - 1);
-
   if (lastVisit === ayer.toDateString()) {
-    // Día consecutivo — incrementar racha
     p.racha = (p.racha || 0) + 1;
   } else {
-    // Primer visita o se rompió la racha — empezar en 1
     p.racha = 1;
   }
-
   localStorage.setItem(LAST_VISIT_KEY, today);
   lsSet(PROFILE_KEY, p);
-
-  // Sync Firebase sin bloquear
   if (currentUID) {
     firebaseSaveProfile({ racha: p.racha }).catch(e => console.warn('[Sync] racha:', e));
   }
@@ -234,12 +293,11 @@ function updateRacha() {
 function getWeekStart(date) {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
-  const day = d.getDay(); // 0=Domingo
-  const diff = day === 0 ? -6 : 1 - day; // Lunes como inicio de semana
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
   d.setDate(d.getDate() + diff);
   return d;
 }
-
 function getTodayStr() {
   const n = new Date();
   return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`;
@@ -253,13 +311,7 @@ function getMonthStr() {
   return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}`;
 }
 
-/* ======================================================
-   ★ FIX 3: RESET DE MISIONES a hora local
-   - Diarias: se resetean a medianoche local
-   - Semanales: se resetean el lunes a medianoche local
-   - Mensuales: se resetean el día 1 de cada mes
-   Guarda una "línea base" para calcular progreso relativo.
-   ====================================================== */
+/* ---- FIX: Reset de misiones a hora local ---- */
 function captureBaseline(period) {
   const enrolled = getEnrolled();
   const p = getProfile();
@@ -278,40 +330,29 @@ function checkMissionResets() {
   const resets = ls(RESET_KEY) || {};
   const mState = getMissions();
   let changed = false;
-
   const todayStr = getTodayStr();
   const weekStr  = getWeekStr();
   const monthStr = getMonthStr();
-
-  // ── Reseteo DIARIO ──
   if (resets.daily !== todayStr) {
     captureBaseline('daily');
     MISSION_DEF.daily.forEach(m => { delete mState[m.id]; });
-    // d01 se auto-completa al visitar (se marca en recordVisit)
     resets.daily = todayStr;
-    // Limpiar secciones visitadas del día anterior
     localStorage.removeItem(SECTIONS_KEY);
     changed = true;
   }
-
-  // ── Reseteo SEMANAL (lunes) ──
   if (resets.weekly !== weekStr) {
     captureBaseline('weekly');
     MISSION_DEF.weekly.forEach(m => { delete mState[m.id]; });
     resets.weekly = weekStr;
-    // Limpiar días activos de la semana anterior
     localStorage.removeItem(ACTIVE_DAYS_KEY);
     changed = true;
   }
-
-  // ── Reseteo MENSUAL (día 1) ──
   if (resets.monthly !== monthStr) {
     captureBaseline('monthly');
     MISSION_DEF.monthly.forEach(m => { delete mState[m.id]; });
     resets.monthly = monthStr;
     changed = true;
   }
-
   if (changed) {
     lsSet(MISSION_KEY, mState);
     lsSet(RESET_KEY, resets);
@@ -321,9 +362,7 @@ function checkMissionResets() {
   }
 }
 
-/* ======================================================
-   ★ FIX 4: CUENTA REGRESIVA en días, horas, min, seg
-   ====================================================== */
+/* ---- Countdown ---- */
 function formatCountdown(secs) {
   if (secs <= 0) return '00m 00s';
   const pad = n => String(n).padStart(2, '0');
@@ -338,14 +377,11 @@ function formatCountdown(secs) {
 
 function getSecsUntilReset() {
   const now = new Date();
-  // Diario → próxima medianoche local
   const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
   const dailySecs = Math.max(0, Math.floor((nextMidnight - now) / 1000));
-  // Semanal → próximo lunes a medianoche
   const nextWeekStart = getWeekStart(now);
   nextWeekStart.setDate(nextWeekStart.getDate() + 7);
   const weeklySecs = Math.max(0, Math.floor((nextWeekStart - now) / 1000));
-  // Mensual → próximo día 1 a medianoche
   const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
   const monthlySecs = Math.max(0, Math.floor((nextMonth - now) / 1000));
   return { dailySecs, weeklySecs, monthlySecs };
@@ -354,9 +390,9 @@ function getSecsUntilReset() {
 let countdownInterval = null;
 function updateMissionCountdowns() {
   const { dailySecs, weeklySecs, monthlySecs } = getSecsUntilReset();
-  const dEl = document.getElementById('cd-daily');
-  const wEl = document.getElementById('cd-weekly');
-  const mEl = document.getElementById('cd-monthly');
+  const dEl = document.getElementById('cd-daily-val');
+  const wEl = document.getElementById('cd-weekly-val');
+  const mEl = document.getElementById('cd-monthly-val');
   if (dEl) dEl.textContent = formatCountdown(dailySecs);
   if (wEl) wEl.textContent = formatCountdown(weeklySecs);
   if (mEl) mEl.textContent = formatCountdown(monthlySecs);
@@ -367,9 +403,7 @@ function startCountdowns() {
   countdownInterval = setInterval(updateMissionCountdowns, 1000);
 }
 
-/* ======================================================
-   ★ FIX 5: RASTREO DE SECCIONES VISITADAS (d02)
-   ====================================================== */
+/* ---- Secciones visitadas (d02) ---- */
 function getSectionsToday() {
   const today = new Date().toDateString();
   try {
@@ -386,8 +420,6 @@ function recordSectionVisit(tabName) {
     localStorage.setItem(SECTIONS_KEY, JSON.stringify(data));
   }
   const count = data.sections.length;
-
-  // Auto-completar d02 cuando llega a 3
   const mState = getMissions();
   if (!mState.d02?.done && count >= 3) {
     completeMissionSilent('d02');
@@ -397,9 +429,7 @@ function recordSectionVisit(tabName) {
   }
 }
 
-/* ======================================================
-   ★ FIX 6: DÍAS ACTIVOS ESTA SEMANA (w02)
-   ====================================================== */
+/* ---- Días activos esta semana (w02) ---- */
 function recordActiveDay() {
   const today = getTodayStr();
   const weekStr = getWeekStr();
@@ -419,9 +449,7 @@ function getActiveDaysThisWeek() {
   return (data.days || []).length;
 }
 
-/* ======================================================
-   ★ FIX 7: TIMER DE 5 MINUTOS EN PLATAFORMA (d06)
-   ====================================================== */
+/* ---- Timer 5 minutos (d06) ---- */
 function startPlatformTimer() {
   setTimeout(() => {
     const mState = getMissions();
@@ -431,12 +459,10 @@ function startPlatformTimer() {
       renderHeader();
       toast('⏱ MISIÓN: 5 MINUTOS COMPLETADA +10 XP', 'var(--yellow)');
     }
-  }, 5 * 60 * 1000); // 5 minutos reales
+  }, 5 * 60 * 1000);
 }
 
-/* ======================================================
-   FIREBASE SYNC — Guardar a Firestore en paralelo
-   ====================================================== */
+/* ---- Firebase sync ---- */
 async function firebaseSaveMisiones(mState) {
   if(!currentUID) return;
   try { await saveMisionesEstado(currentUID, mState); } catch(e) { console.warn('[Sync] misiones:', e); }
@@ -463,7 +489,7 @@ function hideSyncIndicator() {
   if(xpBadge) xpBadge.style.opacity = '1';
 }
 
-/* ---- STARS BACKGROUND ---- */
+/* ---- Stars ---- */
 function initStars(){
   const canvas = $('#stars-canvas');
   if(!canvas) return;
@@ -493,7 +519,7 @@ function initStars(){
   window.addEventListener('resize',()=>{ W=canvas.width=window.innerWidth; H=canvas.height=window.innerHeight; });
 }
 
-/* ---- LOADER ---- */
+/* ---- Loader ---- */
 function hideLoader(){
   const loader = $('#loader');
   if(!loader) return;
@@ -513,7 +539,7 @@ function hideLoader(){
   }, 70);
 }
 
-/* ---- COMPUTE LEVEL ---- */
+/* ---- Level ---- */
 function computeLevel(xp){
   let lv = 1;
   for(let i=0; i<LEVEL_THR.length; i++) if(xp >= LEVEL_THR[i]) lv = i+1;
@@ -528,22 +554,17 @@ function xpForNextLevel(lv, xp){
   return { pct, current: xp-base, needed: next-base };
 }
 
-/* =====================================================
-   BADGE SYSTEM — usa getHorasAprendidas (FIX)
-   ===================================================== */
+/* ---- Badges ---- */
 function getEarnedBadgeIds(p, enrolled) {
   const xp        = p.xp || 0;
   const racha     = p.racha || 0;
-  // ★ FIX: solo horas de cursos completados/aprobados
   const horas     = getHorasAprendidas(enrolled);
   const aprobados = enrolled.filter(c => c.estado==='completado' || c.aprobado===true).length;
   const lv        = computeLevel(xp);
   const areas     = new Set(enrolled.map(c => c.area).filter(Boolean)).size;
   const talleres  = enrolled.filter(c => c.tipo==='temporal').length;
   const totalCursos = enrolled.length;
-
   const earned = new Set();
-
   for(const b of BADGES) {
     const r = b.req;
     if(r === 'oculta_1') {
@@ -551,7 +572,6 @@ function getEarnedBadgeIds(p, enrolled) {
       continue;
     }
     if(r.startsWith('badges')) continue;
-
     const m = r.match(/^(\w+)>=([\d.]+)$/);
     if(!m) continue;
     const [,key,val] = m; const v = Number(val);
@@ -569,17 +589,15 @@ function getEarnedBadgeIds(p, enrolled) {
     }
     if(pass) earned.add(b.id);
   }
-
   const count = earned.size;
   for(const b of BADGES) {
     const m = b.req.match(/^badges>=(\d+)$/);
     if(m && count >= Number(m[1])) earned.add(b.id);
   }
-
   return earned;
 }
 
-/* ---- RENDER HEADER ---- */
+/* ---- Render Header ---- */
 function renderHeader(){
   const p       = getProfile();
   const enrolled= getEnrolled();
@@ -603,11 +621,108 @@ function renderHeader(){
   const statXp       = $('#stat-xp');        if(statXp)        statXp.textContent        = p.xp||0;
 }
 
-/* ---- RENDER RESUMEN — usa horas corregidas ---- */
+/* ======================================================
+   ★ NUEVO: initNameEdit — Edición de nombre de usuario
+   Permite cambiar el nombre, guarda en localStorage y
+   sincroniza con Firebase en tiempo real.
+   ====================================================== */
+function initNameEdit() {
+  const btnEdit  = $('#btn-edit-name');
+  const modal    = $('#name-edit-modal');
+  const btnClose = $('#name-edit-modal-close');
+  const input    = $('#name-edit-input');
+  const btnSave  = $('#name-edit-save');
+  const btnCancel= $('#name-edit-cancel');
+  const charCount= $('#name-char-count');
+
+  if(!btnEdit || !modal || !input || !btnSave) return;
+
+  /* Abrir modal */
+  btnEdit.addEventListener('click', () => {
+    const p = getProfile();
+    input.value = p.nombre || '';
+    updateCharCount();
+    modal.classList.add('show');
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => input.focus(), 100);
+  });
+
+  /* Contador de caracteres */
+  function updateCharCount() {
+    const len = input.value.trim().length;
+    if(charCount) charCount.textContent = `${len}/24`;
+    if(btnSave) btnSave.disabled = len < 2 || len > 24;
+  }
+  input.addEventListener('input', updateCharCount);
+
+  /* Limitar a 24 caracteres mientras escribe */
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') btnSave.click();
+    if (e.key === 'Escape') closeNameModal();
+  });
+
+  /* Guardar */
+  btnSave.addEventListener('click', async () => {
+    const newName = input.value.trim();
+    if (!newName || newName.length < 2) {
+      toast('⚠️ El nombre debe tener al menos 2 caracteres', 'var(--red)');
+      return;
+    }
+    if (newName.length > 24) {
+      toast('⚠️ Máximo 24 caracteres', 'var(--red)');
+      return;
+    }
+
+    btnSave.disabled = true;
+    btnSave.textContent = '⟳ GUARDANDO...';
+
+    const p = getProfile();
+    const oldName = p.nombre;
+    p.nombre = newName;
+    lsSet(PROFILE_KEY, p);
+    renderHeader();
+    closeNameModal();
+
+    /* Sincronizar con Firebase */
+    try {
+      if (currentUID) {
+        await firebaseSaveProfile({ nombre: newName });
+        toast(`✓ NOMBRE ACTUALIZADO: ${newName.toUpperCase()}`, 'var(--green)');
+        addTimelineEvent({
+          icon: '✏️',
+          title: 'Nombre actualizado',
+          detail: `${oldName} → ${newName}`,
+        });
+      } else {
+        toast(`✓ NOMBRE GUARDADO: ${newName.toUpperCase()}`, 'var(--green)');
+      }
+    } catch(err) {
+      console.warn('[Sync] nombre:', err);
+      toast('⚠️ Guardado local, sin sync', 'var(--orange)');
+    } finally {
+      btnSave.disabled = false;
+      btnSave.textContent = '✓ GUARDAR';
+    }
+  });
+
+  function closeNameModal() {
+    modal.classList.remove('show');
+    document.body.style.overflow = '';
+    btnSave.disabled = false;
+    btnSave.textContent = '✓ GUARDAR';
+  }
+
+  btnClose?.addEventListener('click', closeNameModal);
+  btnCancel?.addEventListener('click', closeNameModal);
+  modal?.addEventListener('click', (e) => {
+    if (e.target === modal) closeNameModal();
+  });
+}
+
+/* ---- Render Resumen ---- */
 function renderResumen(){
   const p       = getProfile();
   const enrolled= getEnrolled();
-  // ★ FIX: solo horas de cursos completados/aprobados
   const horas   = getHorasAprendidas(enrolled);
   const aprobados= enrolled.filter(c => c.estado==='completado' || c.aprobado===true).length;
 
@@ -622,7 +737,6 @@ function renderResumen(){
   const bHoras = $('#rc-bar-horas');  if(bHoras)  bHoras.style.width  = safe(horas,200);
   const bRacha = $('#rc-bar-racha');  if(bRacha)  bRacha.style.width  = safe(p.racha||0,30);
 
-  /* Áreas */
   const areaMap = {};
   enrolled.forEach(c=>{ areaMap[c.area]=(areaMap[c.area]||0)+1; });
   const sorted = Object.entries(areaMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
@@ -641,7 +755,6 @@ function renderResumen(){
     }
   }
 
-  /* Mini timeline */
   const events = getEvents().slice(0,5);
   const rTl = $('#resumen-timeline');
   if(rTl){
@@ -657,9 +770,7 @@ function renderResumen(){
   }
 }
 
-/* =====================================================
-   RENDER INVENTORY
-   ===================================================== */
+/* ---- Render Inventory ---- */
 function renderInventory(){
   const enrolled = getEnrolled();
   const search   = ($('#curso-search')?.value||'').toLowerCase();
@@ -706,7 +817,6 @@ function renderInventory(){
     const nota   = getNota(c);
     const tieneNota = typeof c.nota_final === 'number';
     const aprobado  = c.aprobado === true || c.estado === 'completado';
-
     return `
     <div class="inv-slot" data-id="${c.id}" title="${c.nombre}">
       <div class="inv-corner tl"></div><div class="inv-corner tr"></div>
@@ -734,9 +844,7 @@ function renderInventory(){
   }).join('');
 }
 
-/* =====================================================
-   RENDER CALIFICACIONES
-   ===================================================== */
+/* ---- Render Calificaciones ---- */
 let califFilter = '';
 
 function getCursoEstado(c) {
@@ -753,10 +861,8 @@ function getCursoEstado(c) {
 
 function renderCalificaciones() {
   const enrolled = getEnrolled();
-
   let nAprobados = 0, nDesaprobados = 0, nPendientes = 0;
   let sumaNotas = 0, countNotas = 0;
-
   enrolled.forEach(c => {
     const est = getCursoEstado(c);
     if(est === 'aprobado')         nAprobados++;
@@ -765,7 +871,6 @@ function renderCalificaciones() {
     const n = parseFloat(c.nota_final);
     if(!isNaN(n)) { sumaNotas += n; countNotas++; }
   });
-
   const promedio = countNotas > 0 ? (sumaNotas / countNotas).toFixed(1) : '—';
   const total    = enrolled.length || 1;
 
@@ -798,19 +903,12 @@ function renderCalificaciones() {
 
   if(!enrolled.length) {
     listEl.innerHTML = '';
-    if(emptyEl) {
-      emptyEl.style.display = 'block';
-      emptyEl.innerHTML = `<div class="ce-icon">📋</div><p>AÚN NO TIENES CURSOS INSCRITOS</p>`;
-    }
+    if(emptyEl) { emptyEl.style.display = 'block'; emptyEl.innerHTML = `<div class="ce-icon">📋</div><p>AÚN NO TIENES CURSOS INSCRITOS</p>`; }
     return;
   }
-
   if(!list.length) {
     listEl.innerHTML = '';
-    if(emptyEl) {
-      emptyEl.style.display = 'block';
-      emptyEl.innerHTML = `<div class="ce-icon">🔍</div><p>NO HAY CURSOS EN ESTA CATEGORÍA</p>`;
-    }
+    if(emptyEl) { emptyEl.style.display = 'block'; emptyEl.innerHTML = `<div class="ce-icon">🔍</div><p>NO HAY CURSOS EN ESTA CATEGORÍA</p>`; }
     return;
   }
   if(emptyEl) emptyEl.style.display = 'none';
@@ -821,38 +919,23 @@ function renderCalificaciones() {
     const tieneNota  = nota !== null;
     const pct        = tieneNota ? Math.round(nota / 20 * 100) : 0;
     const areaColor  = AREA_COLORS[c.area] || 'var(--cyan)';
-
     let estadoBadge, notaDisplay, fillClass;
     if(estado === 'aprobado') {
-      estadoBadge = '✓ MISIÓN COMPLETA';
-      notaDisplay = nota !== null ? nota : '—';
-      fillClass   = 'fill-aprobado';
+      estadoBadge = '✓ MISIÓN COMPLETA'; notaDisplay = nota !== null ? nota : '—'; fillClass = 'fill-aprobado';
     } else if(estado === 'desaprobado') {
-      estadoBadge = '✗ MISIÓN FALLIDA';
-      notaDisplay = nota !== null ? nota : '—';
-      fillClass   = 'fill-desaprobado';
+      estadoBadge = '✗ MISIÓN FALLIDA'; notaDisplay = nota !== null ? nota : '—'; fillClass = 'fill-desaprobado';
     } else if(estado === 'taller') {
-      estadoBadge = '🎪 TALLER';
-      notaDisplay = '—';
-      fillClass   = 'fill-pendiente';
+      estadoBadge = '🎪 TALLER'; notaDisplay = '—'; fillClass = 'fill-pendiente';
     } else {
-      estadoBadge = '⏳ PENDIENTE';
-      notaDisplay = '?';
-      fillClass   = 'fill-pendiente';
+      estadoBadge = '⏳ PENDIENTE'; notaDisplay = '?'; fillClass = 'fill-pendiente';
     }
-
-    const cardCls = estado === 'aprobado'    ? 'calif-aprobado'
-                  : estado === 'desaprobado' ? 'calif-desaprobado'
-                  : 'calif-pendiente';
-
+    const cardCls = estado === 'aprobado' ? 'calif-aprobado' : estado === 'desaprobado' ? 'calif-desaprobado' : 'calif-pendiente';
     const xpLabel = tieneNota ? `${pct}%` : estado === 'pendiente' ? 'SIN EXAMEN' : '—';
-
     return `
     <div class="calif-card ${cardCls}">
       <div class="calif-ribbon"></div>
       <div class="calif-img-wrap">
-        <img class="calif-img" src="${c.img||''}" alt="${c.nombre}" loading="lazy"
-          onerror="this.style.display='none'">
+        <img class="calif-img" src="${c.img||''}" alt="${c.nombre}" loading="lazy" onerror="this.style.display='none'">
         <div class="calif-img-overlay"></div>
         <div class="ca-area-dot" style="color:${areaColor};border-color:${areaColor}">${(c.area||'CURSO').toUpperCase()}</div>
       </div>
@@ -864,15 +947,11 @@ function renderCalificaciones() {
         </div>
         <div class="calif-xp-row">
           <span class="calif-xp-label">${xpLabel}</span>
-          <div class="calif-barra-track">
-            <div class="calif-barra-fill ${fillClass}" style="width:${pct}%"></div>
-          </div>
+          <div class="calif-barra-track"><div class="calif-barra-fill ${fillClass}" style="width:${pct}%"></div></div>
         </div>
       </div>
       <div class="calif-grade-panel">
-        <div class="calif-grade-orb">
-          <span class="calif-nota-num">${notaDisplay}</span>
-        </div>
+        <div class="calif-grade-orb"><span class="calif-nota-num">${notaDisplay}</span></div>
         ${tieneNota ? `<div class="calif-nota-denom">/20</div>` : ''}
         <div class="calif-estado-badge">${estadoBadge}</div>
       </div>
@@ -881,13 +960,8 @@ function renderCalificaciones() {
 
   requestAnimationFrame(() => {
     $$('#calif-list .calif-card').forEach((el, i) => {
-      el.style.opacity = '0';
-      el.style.transform = 'translateY(14px)';
-      setTimeout(() => {
-        el.style.transition = 'opacity 0.3s, transform 0.3s';
-        el.style.opacity = '1';
-        el.style.transform = 'none';
-      }, i * 55);
+      el.style.opacity = '0'; el.style.transform = 'translateY(14px)';
+      setTimeout(() => { el.style.transition = 'opacity 0.3s, transform 0.3s'; el.style.opacity = '1'; el.style.transform = 'none'; }, i * 55);
     });
   });
 }
@@ -903,7 +977,7 @@ function initCalifFilters() {
   });
 }
 
-/* ---- RENDER BADGES ---- */
+/* ---- Render Badges ---- */
 let badgeCatFilter = '';
 function renderBadges(){
   const p       = getProfile();
@@ -911,16 +985,13 @@ function renderBadges(){
   const earnedIds = getEarnedBadgeIds(p, enrolled);
   const filtered  = badgeCatFilter ? BADGES.filter(b=>b.cat===badgeCatFilter) : BADGES;
   const earnedCount = earnedIds.size;
-
   const beEl = $('#badges-earned'); if(beEl) beEl.textContent = earnedCount;
   const btEl = $('#badges-total');  if(btEl) btEl.textContent = BADGES.length;
   const bbEl = $('#badges-bar-fill');
   if(bbEl) bbEl.style.width = (earnedCount/BADGES.length*100).toFixed(0)+'%';
-
   const seen  = ls(BADGE_SEEN) || [];
   const grid  = $('#badges-grid');
   if(!grid) return;
-
   grid.innerHTML = filtered.map(b=>{
     const isEarned = earnedIds.has(b.id);
     const isNew    = isEarned && !seen.includes(b.id);
@@ -930,19 +1001,12 @@ function renderBadges(){
       <span class="badge-icon">${b.icon}</span>
       <div class="badge-name">${b.name}</div>
       <div class="badge-desc">${b.desc}</div>
-      ${isEarned
-        ? `<div class="badge-date">+${b.xp} XP ✓</div>`
-        : `<div class="badge-date" style="color:var(--muted)">+${b.xp} XP (bloq.)</div>`
-      }
+      ${isEarned ? `<div class="badge-date">+${b.xp} XP ✓</div>` : `<div class="badge-date" style="color:var(--muted)">+${b.xp} XP (bloq.)</div>`}
     </div>`;
   }).join('');
-
   requestAnimationFrame(()=>{
-    $$('#badges-grid .reveal').forEach((el,i)=>{
-      setTimeout(()=> el.classList.add('visible'), i*30);
-    });
+    $$('#badges-grid .reveal').forEach((el,i)=>{ setTimeout(()=> el.classList.add('visible'), i*30); });
   });
-
   const newBadges = [...earnedIds].filter(id => !seen.includes(id));
   if(newBadges.length > 0){
     const updated = [...seen, ...newBadges];
@@ -968,61 +1032,43 @@ function celebrateBadge(badge){
   document.body.style.overflow='hidden';
 }
 
-/* =====================================================
-   ★ RENDER MISSIONS — Con countdown y botón justo
-   - Countdown real inyectado encima de cada columna
-   - RECLAMAR solo aparece si el progreso real >= max
-   - Sin botón que dé XP gratis
-   ===================================================== */
+/* ======================================================
+   RENDER MISSIONS
+   ====================================================== */
 function renderMissions(){
   const p       = getProfile();
   const enrolled= getEnrolled();
   const mState  = getMissions();
   const baselines = getBaselines();
-  // ★ FIX: horas solo de completados
   const horasAprendidas = getHorasAprendidas(enrolled);
-
-  // Valores actuales para comparar con baselines
   const currentXP      = p.xp || 0;
   const currentCursos  = enrolled.length;
   const currentAreas   = new Set(enrolled.map(c => c.area).filter(Boolean)).size;
   const currentLevel   = computeLevel(currentXP);
-
-  // Líneas base por período
   const bDay   = baselines.daily   || { enrolledCount:0, xp:0, nivel:1, areas:0 };
   const bWeek  = baselines.weekly  || { enrolledCount:0, xp:0, nivel:1, areas:0 };
   const bMonth = baselines.monthly || { enrolledCount:0, xp:0, nivel:1, areas:0 };
-
-  // Secciones visitadas hoy
   const secData = getSectionsToday();
   const sectionsCount = secData.sections.length;
-
-  // Días activos esta semana
   const activeDaysThisWeek = getActiveDaysThisWeek();
-
   const { dailySecs, weeklySecs, monthlySecs } = getSecsUntilReset();
 
   function computeProg(m, st) {
-    if (st?.done) return m.max; // ya completada, mostrar llena
-
+    if (st?.done) return m.max;
     let prog = st?.prog || 0;
-
     switch(m.id) {
-      // ── DIARIAS ──
-      case 'd01': prog = 1; break; // Auto al visitar
+      case 'd01': prog = 1; break;
       case 'd02': prog = Math.min(sectionsCount, m.max); break;
       case 'd03': prog = Math.min(Math.max(0, currentCursos - bDay.enrolledCount), m.max); break;
       case 'd04': prog = (p.racha || 0) >= 1 ? 1 : 0; break;
-      case 'd05': prog = st?.prog || 0; break; // Se completa en markBuzonRead
-      case 'd06': prog = st?.prog || 0; break; // Se completa con timer
-      // ── SEMANALES ──
+      case 'd05': prog = st?.prog || 0; break;
+      case 'd06': prog = st?.prog || 0; break;
       case 'w01': prog = Math.min(Math.max(0, currentCursos - bWeek.enrolledCount), m.max); break;
       case 'w02': prog = Math.min(activeDaysThisWeek, m.max); break;
       case 'w03': prog = currentAreas >= 1 ? 1 : 0; break;
       case 'w04': prog = Math.min(Math.max(0, currentXP - bWeek.xp), m.max); break;
       case 'w05': prog = Math.min(currentCursos, m.max); break;
-      case 'w06': prog = st?.prog || 0; break; // Se completa en markAllBuzonRead
-      // ── MENSUALES ──
+      case 'w06': prog = st?.prog || 0; break;
       case 'm01': prog = Math.min(Math.max(0, currentCursos - bMonth.enrolledCount), m.max); break;
       case 'm02': prog = Math.min(horasAprendidas, m.max); break;
       case 'm03': prog = Math.min(currentAreas, m.max); break;
@@ -1035,11 +1081,8 @@ function renderMissions(){
   function renderGroup(defs, containerId, countdownId, countdownSecs, cdClass) {
     const el = $(containerId);
     if (!el) return;
-
-    // ── Inyectar countdown encima ──
     let cdWrap = document.getElementById(countdownId);
     if (!cdWrap) {
-      // Crear y agregar antes del contenedor de misiones
       const col = el.closest('.missions-col');
       if (col) {
         cdWrap = document.createElement('div');
@@ -1051,17 +1094,12 @@ function renderMissions(){
     if (cdWrap) {
       cdWrap.innerHTML = `<span class="cd-icon">⟳</span><span class="cd-label">RESET EN:</span><span class="cd-val" id="${countdownId}-val">${formatCountdown(countdownSecs)}</span>`;
     }
-
     el.innerHTML = defs.map(m => {
       const st   = mState[m.id];
       const prog = computeProg(m, st);
       const done = (st?.done) || prog >= m.max;
       const pct  = Math.min(100, (prog / m.max) * 100).toFixed(0);
-
-      // ★ FIX: RECLAMAR solo cuando el progreso REAL llegó al máximo
-      // y la misión no está ya marcada como completada
       const canClaim = !st?.done && prog >= m.max;
-
       return `
       <div class="mission-item ${done ? 'done' : ''}" data-mid="${m.id}">
         <div class="mi-header">
@@ -1085,7 +1123,6 @@ function renderMissions(){
         </div>
       </div>`;
     }).join('');
-
     el.querySelectorAll('.btn-complete').forEach(btn => {
       btn.addEventListener('click', () => completeMission(btn.dataset.mid));
     });
@@ -1094,57 +1131,42 @@ function renderMissions(){
   renderGroup(MISSION_DEF.daily,   '#mission-daily',   'cd-daily',   dailySecs,   'daily');
   renderGroup(MISSION_DEF.weekly,  '#mission-weekly',  'cd-weekly',  weeklySecs,  'weekly');
   renderGroup(MISSION_DEF.monthly, '#mission-monthly', 'cd-monthly', monthlySecs, 'monthly');
-
-  // Arrancar el tick de countdowns si no está corriendo
   startCountdowns();
 }
 
-/* ── completeMission: llamado por botón RECLAMAR ── */
 function completeMission(mid){
   const all = [...MISSION_DEF.daily,...MISSION_DEF.weekly,...MISSION_DEF.monthly];
   const m = all.find(x=>x.id===mid); if(!m) return;
   const mState = getMissions();
   if(mState[mid]?.done) return;
-
   mState[mid] = { prog: m.max, done: true };
   lsSet(MISSION_KEY, mState);
-
   const p = getProfile();
   p.xp = (p.xp||0) + m.xp;
   lsSet(PROFILE_KEY, p);
-
   addTimelineEvent({ icon:'⚔️', title:`Misión completada: ${m.name}`, detail:`+${m.xp} XP ganados` });
   toast(`⚔️ MISIÓN COMPLETADA: +${m.xp} XP`, 'var(--yellow)');
-
   firebaseSaveMisiones(mState);
   firebaseSaveProfile({ xp: p.xp });
-
-  renderMissions();
-  renderHeader();
-  renderResumen();
+  renderMissions(); renderHeader(); renderResumen();
 }
 
-/* ── completeMissionSilent: llamado por sistema (sin re-render) ── */
 function completeMissionSilent(mid){
   const all = [...MISSION_DEF.daily,...MISSION_DEF.weekly,...MISSION_DEF.monthly];
   const m = all.find(x=>x.id===mid); if(!m) return;
   const mState = getMissions();
   if(mState[mid]?.done) return;
-
   mState[mid] = { prog: m.max, done: true };
   lsSet(MISSION_KEY, mState);
-
   const p = getProfile();
   p.xp = (p.xp||0) + m.xp;
   lsSet(PROFILE_KEY, p);
-
   addTimelineEvent({ icon: m.icon, title:`Misión: ${m.name}`, detail:`+${m.xp} XP` });
-
   firebaseSaveMisiones(mState).catch(()=>{});
   firebaseSaveProfile({ xp: p.xp }).catch(()=>{});
 }
 
-/* ---- TIMELINE ---- */
+/* ---- Timeline ---- */
 function addTimelineEvent(ev){
   const event = { ...ev, fecha: new Date().toISOString() };
   const events = getEvents();
@@ -1160,12 +1182,9 @@ function renderTimeline(){
   const empty  = $('#timeline-empty');
   if(!tl) return;
   if(!events.length){
-    tl.style.display='none';
-    if(empty) empty.style.display='block';
-    return;
+    tl.style.display='none'; if(empty) empty.style.display='block'; return;
   }
-  tl.style.display='';
-  if(empty) empty.style.display='none';
+  tl.style.display=''; if(empty) empty.style.display='none';
   tl.innerHTML = events.map((e,i)=>`
     <div class="tl-event">
       <div class="tl-icon-wrap">
@@ -1180,14 +1199,16 @@ function renderTimeline(){
     </div>`).join('');
 }
 
-/* ---- BUZÓN ---- */
+/* ======================================================
+   ★ BUZÓN — renderBuzon con fechas DD-MM-YYYY y caducidad
+   ====================================================== */
 let buzonFilter = '';
 function renderBuzon(){
   const state   = getBuzonState();
   let msgs = [...BUZON_MESSAGES];
   if(buzonFilter) msgs = msgs.filter(m => m.cat === buzonFilter);
 
-  const unread = BUZON_MESSAGES.filter(m => !state[m.id]).length;
+  const unread = BUZON_MESSAGES.filter(m => !state[m.id] && !isBuzonExpired(m)).length;
   const countEl= $('#buzon-unread-count');
   if(countEl){
     countEl.textContent = unread || '';
@@ -1206,73 +1227,75 @@ function renderBuzon(){
   if(!list) return;
 
   if(!msgs.length){
-    list.innerHTML='';
-    if(empty) empty.style.display='block';
-    return;
+    list.innerHTML=''; if(empty) empty.style.display='block'; return;
   }
   if(empty) empty.style.display='none';
 
   list.innerHTML = msgs.map(m=>{
-    const read = !!state[m.id];
+    const read    = !!state[m.id];
+    const expired = isBuzonExpired(m);
+    const expInfo = getBuzonExpireInfo(m);
+
+    let expireBadge = '';
+    if (expInfo) {
+      if (expInfo.expired) {
+        expireBadge = `<span class="bm-expire expired">💀 CADUCADO</span>`;
+      } else if (expInfo.urgent) {
+        expireBadge = `<span class="bm-expire urgent">⚡ ${expInfo.label}</span>`;
+      } else {
+        expireBadge = `<span class="bm-expire normal">⏳ ${expInfo.label}</span>`;
+      }
+    }
+
     return `
-    <div class="buzon-msg ${read?'read':'unread'}" data-bid="${m.id}">
+    <div class="buzon-msg ${read?'read':'unread'} ${expired?'buzon-expired':''}" data-bid="${m.id}">
       <span class="bm-icon">${m.icon}</span>
       <div class="bm-body">
         <div class="bm-header">
           <span class="bm-title">${m.title}</span>
           <span class="bm-cat ${m.cat}">${m.cat.toUpperCase()}</span>
+          ${expireBadge}
         </div>
         <div class="bm-text">${m.text}</div>
-        <div class="bm-time">${timeAgo(m.fecha)}</div>
+        <div class="bm-footer">
+          <div class="bm-time">📅 ${formatBuzonDate(m.fecha)}</div>
+          ${expired ? '<div class="bm-expired-notice">Este mensaje ha caducado</div>' : ''}
+        </div>
       </div>
-      ${!read ? '<div class="bm-unread-dot"></div>' : ''}
+      ${!read && !expired ? '<div class="bm-unread-dot"></div>' : ''}
     </div>`;
   }).join('');
 
-  list.querySelectorAll('.buzon-msg').forEach(el=>{
+  list.querySelectorAll('.buzon-msg:not(.buzon-expired)').forEach(el=>{
     el.addEventListener('click',()=> markBuzonRead(el.dataset.bid));
   });
 }
 
-/* ★ FIX: markBuzonRead también da XP por d05 */
 function markBuzonRead(id){
   const state = getBuzonState();
   if(state[id]) return;
   state[id] = true;
   lsSet(BUZON_KEY, state);
-
-  // Auto-completar d05 con XP
   completeMissionSilent('d05');
-
   firebaseSaveBuzon(state);
   firebaseSaveMisiones(getMissions());
-
-  renderBuzon();
-  renderMissions();
-  renderHeader();
+  renderBuzon(); renderMissions(); renderHeader();
   toast('📬 MENSAJE LEÍDO', 'var(--yellow)');
 }
 
-/* ★ FIX: markAllBuzonRead también da XP por w06 */
 function markAllBuzonRead(){
   const state = getBuzonState();
-  BUZON_MESSAGES.forEach(m=>{ state[m.id]=true; });
+  BUZON_MESSAGES.filter(m => !isBuzonExpired(m)).forEach(m=>{ state[m.id]=true; });
   lsSet(BUZON_KEY, state);
-
-  // Auto-completar d05 y w06 con XP
   completeMissionSilent('d05');
   completeMissionSilent('w06');
-
   firebaseSaveBuzon(state);
   firebaseSaveMisiones(getMissions());
-
-  renderBuzon();
-  renderMissions();
-  renderHeader();
+  renderBuzon(); renderMissions(); renderHeader();
   toast('📭 TODOS LOS MENSAJES LEÍDOS', 'var(--green)');
 }
 
-/* ---- TABS — registra visita de sección para d02 ---- */
+/* ---- Tabs ---- */
 function initTabs(){
   $$('.tab').forEach(tab=>{
     tab.addEventListener('click',()=>{
@@ -1281,10 +1304,7 @@ function initTabs(){
       tab.classList.add('active');
       const panel = $(`#tab-${tab.dataset.tab}`);
       if(panel) panel.classList.add('active');
-
-      // ★ FIX: Registrar sección visitada para misión d02
       recordSectionVisit(tab.dataset.tab);
-
       switch(tab.dataset.tab){
         case 'insignias':       renderBadges();           break;
         case 'misiones':        renderMissions();         break;
@@ -1298,14 +1318,13 @@ function initTabs(){
   });
 }
 
-/* ---- AVATAR ---- */
+/* ---- Avatar ---- */
 function initAvatar(){
   const btn   = $('#btn-change-avatar');
   const modal = $('#avatar-modal');
   const close = $('#avatar-modal-close');
   const picker= $('#avatar-picker');
   if(!btn||!modal||!picker) return;
-
   btn.addEventListener('click',()=>{
     const p2 = getProfile();
     picker.innerHTML = AVATARS.map(av=>`
@@ -1325,12 +1344,11 @@ function initAvatar(){
     modal.classList.add('show');
     document.body.style.overflow='hidden';
   });
-
   close?.addEventListener('click',()=>{ modal.classList.remove('show'); document.body.style.overflow=''; });
   modal.addEventListener('click', e=>{ if(e.target===modal){ modal.classList.remove('show'); document.body.style.overflow=''; }});
 }
 
-/* ---- BADGE MODAL ---- */
+/* ---- Badge Modal ---- */
 function initBadgeModal(){
   $('#badge-modal-close')?.addEventListener('click',()=>{
     $('#badge-modal')?.classList.remove('show');
@@ -1341,7 +1359,6 @@ function initBadgeModal(){
   });
 }
 
-/* ---- BADGE FILTER ---- */
 function initBadgeFilter(){
   $$('.bf-btn').forEach(btn=>{
     btn.addEventListener('click',()=>{
@@ -1353,14 +1370,12 @@ function initBadgeFilter(){
   });
 }
 
-/* ---- COURSE FILTERS ---- */
 function initCourseFilters(){
   $('#curso-search')?.addEventListener('input',  ()=> renderInventory());
   $('#curso-filter-estado')?.addEventListener('change', ()=> renderInventory());
   $('#curso-filter-tipo')?.addEventListener('change',   ()=> renderInventory());
 }
 
-/* ---- BUZON CONTROLS ---- */
 function initBuzonControls(){
   $('#btn-mark-all')?.addEventListener('click', markAllBuzonRead);
   $('#buzon-filter')?.addEventListener('change', e=>{
@@ -1369,7 +1384,6 @@ function initBuzonControls(){
   });
 }
 
-/* ---- TIMELINE CLEAR ---- */
 function initTimelineClear(){
   $('#btn-clear-timeline')?.addEventListener('click',()=>{
     if(!confirm('¿Borrar todo el historial de actividad?')) return;
@@ -1379,14 +1393,12 @@ function initTimelineClear(){
   });
 }
 
-/* ---- NAV ---- */
 function initNav(){
   const ham = $('#hamburger');
   const nav = $('#main-nav');
   if(ham&&nav) ham.addEventListener('click',()=> nav.classList.toggle('open'));
 }
 
-/* ---- LOGOUT ---- */
 function initLogout(){
   $('#btn-logout')?.addEventListener('click',()=>{
     if(confirm('¿Cerrar sesión?')){
@@ -1396,7 +1408,6 @@ function initLogout(){
   });
 }
 
-/* ---- BACK TO TOP ---- */
 function initBackToTop(){
   const btn = $('#back-top');
   if(!btn) return;
@@ -1404,37 +1415,19 @@ function initBackToTop(){
   btn.addEventListener('click',()=> window.scrollTo({top:0,behavior:'smooth'}));
 }
 
-/* ======================================================
-   ★ RECORD VISIT — actualiza racha, registra día activo,
-   auto-completa d01 y d04
-   ====================================================== */
+/* ---- Record Visit ---- */
 function recordVisit(){
-  // ★ FIX: Actualiza la racha real por fechas
   updateRacha();
-
-  // ★ FIX: Registra este día como activo en la semana (para w02)
   recordActiveDay();
-
-  // Auto-completar d01 (visitar perfil) con XP
   const mState = getMissions();
-  if (!mState.d01?.done) {
-    completeMissionSilent('d01');
-  }
-
-  // Auto-completar d04 (racha activa) con XP si racha >= 1
+  if (!mState.d01?.done) completeMissionSilent('d01');
   const p = getProfile();
-  if (!mState.d04?.done && (p.racha || 0) >= 1) {
-    completeMissionSilent('d04');
-  }
-
-  // Registrar visita en timeline (una vez por día)
+  if (!mState.d04?.done && (p.racha || 0) >= 1) completeMissionSilent('d04');
   const events = getEvents();
   const today  = new Date().toDateString();
   if(!events.some(e => new Date(e.fecha).toDateString()===today && e.id==='visit')){
     addTimelineEvent({ id:'visit', icon:'👤', title:'Visitaste tu perfil', detail:'Hoy' });
   }
-
-  // También registra la sección "resumen" como visitada
   recordSectionVisit('resumen');
 }
 
@@ -1455,26 +1448,19 @@ document.addEventListener('DOMContentLoaded', ()=>{
   initLogout();
   initBackToTop();
   initCalifFilters();
+  /* ★ NUEVO: Inicializar edición de nombre */
+  initNameEdit();
 
-  // ★ FIX: Verificar y resetear misiones a hora local ANTES de renderizar
   checkMissionResets();
-
-  // ★ FIX: Timer de 5 minutos para d06
   startPlatformTimer();
 
   let firstLoad = true;
 
   onAuthChange(async (user) => {
-    if(!user) {
-      window.location.href = 'index.html';
-      return;
-    }
-
+    if(!user) { window.location.href = 'index.html'; return; }
     currentUID = user.uid;
-
     if(firstLoad) {
       firstLoad = false;
-
       showSyncIndicator('⟳ CARGANDO TU PROGRESO...');
       try {
         await syncAllToLocalStorage(user.uid);
@@ -1484,15 +1470,11 @@ document.addEventListener('DOMContentLoaded', ()=>{
         hideSyncIndicator();
         console.warn('[Perfil] Error de sincronización:', err);
       }
-
-      // ★ FIX: Resetear misiones DESPUÉS de sync (datos frescos)
       checkMissionResets();
-
       renderHeader();
       renderResumen();
       renderBuzon();
       recordVisit();
-
       const activeTab = document.querySelector('.tab.active');
       if(activeTab) {
         switch(activeTab.dataset.tab){
