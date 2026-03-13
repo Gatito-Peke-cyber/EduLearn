@@ -1,14 +1,14 @@
 /* =====================================================
-   EduLearn — database.js  v4.4
-   FIXES v4.4:
-   - NUEVO: _deduplicateEnrollments() — elimina cursos
-     duplicados que aparecen cuando un mismo curso se
-     inscribió desde dos rutas distintas (catálogo vs
-     página del curso), generando dos doc IDs distintos
-     en Firestore pero para el mismo curso.
-   - getUserEnrollments: aplica deduplicación al retornar
-   - syncAllToLocalStorage: aplica deduplicación antes de
-     escribir en localStorage (fuente principal del bug)
+   EduLearn — database.js  v4.5
+   FIXES v4.5:
+   - _deduplicateEnrollments() ahora también fusiona
+     entradas que tienen DISTINTO cursoId pero el MISMO
+     link (ej. p16 con link='ingles.html' y ingles_a1
+     con link='ingles.html' son el mismo curso).
+     La entrada con ID canónico (más largo / no numérico)
+     tiene prioridad; se conserva el mejor estado.
+   - getUserEnrollments, syncAllToLocalStorage y
+     _updateEnrollmentLocal usan la deduplicación mejorada.
    ===================================================== */
 
 import { db } from './firebase.js';
@@ -196,7 +196,7 @@ export async function updateExamResult(uid, cursoId, nota_final, aprobado) {
           list[idx].aprobado = aprobado;
         }
         list[idx].estado = aprobado ? 'completado' : 'en_progreso';
-        localStorage.setItem('inscripciones', JSON.stringify(list));
+        localStorage.setItem('inscripciones', JSON.stringify(_deduplicateEnrollments(list)));
       }
     } catch (_) {}
 
@@ -211,11 +211,8 @@ export async function updateExamResult(uid, cursoId, nota_final, aprobado) {
 export const updateExamResultDB = updateExamResult;
 
 /* ═══════════════════════════════════════════════════
-   FIX v4.4: getUserEnrollments aplica deduplicación.
-   Cuando un mismo curso fue inscrito desde dos rutas
-   distintas (generando dos doc IDs en Firestore), el
-   query devolvía dos entradas. Ahora se fusionan en una,
-   conservando el mejor estado (nota más alta, completado).
+   FIX v4.5: getUserEnrollments aplica deduplicación
+   mejorada (por ID y también por link).
    ═══════════════════════════════════════════════════ */
 export async function getUserEnrollments(uid) {
   try {
@@ -237,7 +234,7 @@ export async function getUserEnrollments(uid) {
       };
     });
 
-    /* ── FIX v4.4: eliminar duplicados antes de retornar ── */
+    /* ── FIX v4.5: eliminar duplicados antes de retornar ── */
     return _deduplicateEnrollments(raw);
   } catch (err) {
     console.error('[DB] getUserEnrollments:', err);
@@ -350,15 +347,14 @@ export async function addInsignia(uid, badgeId) {
    SINCRONIZACIÓN COMPLETA  Firebase → localStorage
    Firebase es la FUENTE DE VERDAD.
 
-   FIX v4.4: aplica _deduplicateEnrollments antes de
-   escribir en localStorage para que el perfil no muestre
-   el mismo curso dos veces.
+   FIX v4.5: aplica _deduplicateEnrollments mejorada
+   (por ID y por link) antes de escribir en localStorage.
    ═══════════════════════════════════════════════════ */
 export async function syncAllToLocalStorage(uid) {
   try {
     const [profile, enrollments, misiones, buzon, timeline] = await Promise.all([
       getUserProfile(uid),
-      getUserEnrollments(uid),   // ya viene deduplicado (fix v4.4)
+      getUserEnrollments(uid),   // ya viene deduplicado (fix v4.5)
       getMisionesEstado(uid),
       getBuzonEstado(uid),
       getTimelineDB(uid),
@@ -374,7 +370,7 @@ export async function syncAllToLocalStorage(uid) {
 
     /* ── INSCRIPCIONES ── */
     if (Array.isArray(enrollments) && enrollments.length > 0) {
-      /* FIX v4.4: deduplicar también contra lo que ya hay en
+      /* FIX v4.5: deduplicar también contra lo que ya hay en
          localStorage (puede haber entradas de otras páginas
          que aún no se subieron a Firebase) */
       let merged = enrollments;
@@ -441,25 +437,40 @@ export async function saveFullProfile(uid, profileData) {
    ═══════════════════════════════════════════════════ */
 
 /**
- * FIX v4.4 — Elimina entradas duplicadas de un arreglo
+ * FIX v4.5 — Elimina entradas duplicadas de un arreglo
  * de inscripciones.
  *
- * Lógica:
- *  · La clave de deduplicación es cursoId › id › nombre (normalizado).
- *  · Cuando hay dos entradas con la misma clave, se FUSIONAN
- *    conservando el mejor estado:
- *      - nota_final más alta
- *      - aprobado = true si alguna lo tiene
- *      - estado = 'completado' si alguna lo tiene
- *  · El arreglo de entrada debe tener los elementos con mayor
- *    prioridad (Firebase) al principio para que el merge les dé
- *    preferencia en los campos de metadata (nombre, área, etc.).
+ * Estrategia de deduplicación (en orden de prioridad):
+ *
+ * 1. CLAVE PRIMARIA: cursoId › id › nombre (normalizado).
+ *    Dos entradas con la misma clave primaria se fusionan.
+ *
+ * 2. CLAVE SECUNDARIA (NUEVO en v4.5): link normalizado.
+ *    Si dos entradas tienen DISTINTO cursoId pero el MISMO
+ *    link (ej. 'p16'+'ingles.html' y 'ingles_a1'+'ingles.html'),
+ *    se considera el mismo curso y se fusionan.
+ *    La entrada con ID canónico (no numérico puro, más descriptivo)
+ *    gana como clave principal; se conserva el mejor estado.
+ *
+ * En ambos casos la fusión conserva:
+ *   - nota_final más alta
+ *   - aprobado = true si alguna lo tiene
+ *   - estado = 'completado' si alguna lo tiene
+ *
+ * El arreglo de entrada debe tener los elementos con mayor
+ * prioridad (Firebase) al principio.
  */
 function _deduplicateEnrollments(list) {
-  const seen = new Map();
+  /* ─ Paso 1: normalizar links para comparación ─ */
+  const normLink = (link) => {
+    if (!link || link === '#') return '';
+    return link.replace(/^\.\//, '').replace(/[?#].*$/, '').toLowerCase().trim();
+  };
+
+  /* ─ Paso 2: construir mapa primario por cursoId/id ─ */
+  const seen = new Map(); // key (cursoId) → entry
 
   for (const item of list) {
-    /* Clave: cursoId tiene prioridad sobre id, luego nombre */
     const rawKey = item.cursoId || item.id || item.nombre || '';
     const key    = String(rawKey).toLowerCase().trim();
     if (!key) continue;
@@ -467,26 +478,76 @@ function _deduplicateEnrollments(list) {
     if (!seen.has(key)) {
       seen.set(key, { ...item });
     } else {
-      const prev = seen.get(key);
+      _mergeInto(seen.get(key), item);
+    }
+  }
 
-      /* nota_final: conservar la más alta */
-      const prevNota = typeof prev.nota_final === 'number' ? prev.nota_final : -1;
-      const itemNota = typeof item.nota_final === 'number' ? item.nota_final : -1;
-      if (itemNota > prevNota) prev.nota_final = item.nota_final;
+  /* ─ Paso 3: fusionar entradas con mismo link pero distinto ID ─ */
+  // Construimos un mapa link → key para detectar colisiones
+  const linkMap = new Map(); // normLink → key (primer key visto con ese link)
 
-      /* aprobado: conservar true si alguno lo tiene */
-      if (item.aprobado === true) prev.aprobado = true;
+  for (const [key, entry] of seen.entries()) {
+    const nl = normLink(entry.link);
+    if (!nl) continue;
 
-      /* estado: conservar 'completado' si alguno lo tiene */
-      if (item.estado === 'completado') prev.estado = 'completado';
+    if (!linkMap.has(nl)) {
+      linkMap.set(nl, key);
+    } else {
+      // Colisión: mismo link, distintos IDs → fusionar en el que ya está
+      const existingKey = linkMap.get(nl);
+      if (existingKey === key) continue; // misma entrada, ignorar
 
-      /* ids: preservar si faltan */
-      if (!prev.cursoId && item.cursoId) prev.cursoId = item.cursoId;
-      if (!prev.id && item.id)           prev.id      = item.id;
+      const existing = seen.get(existingKey);
+      if (!existing) continue;
+
+      // Decidir cuál ID "gana" como clave canónica:
+      // Preferir el ID no puramente numérico (ej. 'ingles_a1' > 'p16')
+      const existingIsNumeric = /^[a-z]?\d+$/.test(existingKey);
+      const currentIsNumeric  = /^[a-z]?\d+$/.test(key);
+      let canonicalKey, sacrificeKey;
+
+      if (!existingIsNumeric && currentIsNumeric) {
+        // El existente es canónico, fusionar el actual en él
+        canonicalKey  = existingKey;
+        sacrificeKey  = key;
+        _mergeInto(existing, seen.get(key));
+      } else if (existingIsNumeric && !currentIsNumeric) {
+        // El actual es canónico: fusionar el existente en el actual,
+        // luego reemplazar en el mapa
+        canonicalKey  = key;
+        sacrificeKey  = existingKey;
+        const current = seen.get(key);
+        _mergeInto(current, existing);
+        seen.delete(existingKey);
+        linkMap.set(nl, key); // actualizar puntero en linkMap
+      } else {
+        // Ambos tienen el mismo "tipo" de ID; conservar el primero visto
+        canonicalKey  = existingKey;
+        sacrificeKey  = key;
+        _mergeInto(existing, seen.get(key));
+      }
+
+      // Eliminar la entrada sacrificada
+      seen.delete(sacrificeKey);
     }
   }
 
   return Array.from(seen.values());
+}
+
+/**
+ * Fusiona los campos de `source` en `target`, conservando siempre
+ * el mejor estado (nota más alta, aprobado=true, completado).
+ * Modifica `target` en el lugar.
+ */
+function _mergeInto(target, source) {
+  const prevNota = typeof target.nota_final === 'number' ? target.nota_final : -1;
+  const srcNota  = typeof source.nota_final === 'number' ? source.nota_final : -1;
+  if (srcNota > prevNota)            target.nota_final = source.nota_final;
+  if (source.aprobado === true)      target.aprobado   = true;
+  if (source.estado === 'completado') target.estado    = 'completado';
+  if (!target.cursoId && source.cursoId) target.cursoId = source.cursoId;
+  if (!target.id      && source.id)      target.id      = source.id;
 }
 
 /**
@@ -526,7 +587,7 @@ function _updateEnrollmentLocal(cursoId, data, isNew) {
       Object.assign(list[idx], keep);
     }
 
-    /* FIX v4.4: deduplicar antes de guardar */
+    /* FIX v4.5: deduplicar antes de guardar (por ID y por link) */
     localStorage.setItem('inscripciones', JSON.stringify(_deduplicateEnrollments(list)));
   } catch (_) {}
 }
