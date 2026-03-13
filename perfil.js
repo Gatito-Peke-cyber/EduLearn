@@ -106,7 +106,7 @@ const BUZON_MESSAGES = [
     //text:'El taller "Maratón de Mates" expira en menos de 24 horas. ¡No olvides completarlo para obtener tu insignia!',
     //fecha: new Date(Date.now() - 3*60*60*1000).toISOString() },
   { id:'bz03', cat:'logro',         icon:'🏆', title:'¡NUEVA INSIGNIA DESBLOQUEADA!',
-    text:'Has ganado la insignia "Primer Paso" por inscribirte en tu primer curso. ¡Sigue así, campeón!',
+    text:'Has ganado la insignia "Primer Paso" por inscribirte en tu primer curso. ¡Sigue así!',
     fecha: new Date(Date.now() - 1*24*60*60*1000).toISOString() },
   //{ id:'bz04', cat:'sistema',       icon:'🔧', title:'MANTENIMIENTO PROGRAMADO',
     //text:'Este domingo de 2:00 a 4:00 AM realizaremos mantenimiento. La plataforma podría no estar disponible durante ese horario.',
@@ -132,7 +132,7 @@ const BUZON_MESSAGES = [
 ];
 
 /* ---- AVATARS ---- */
-const AVATARS = ['🎓','🦊','🐱','🐸','🦄','🐧','🦁','🐼','🤖','👾','🧙','🧑‍💻','🐉','🦅','🐢','🎮','⭐','🌈','🚀','💎','🔮','🎯','🌟','🏆'];
+const AVATARS = ['🎓','🦊','🐱','🐸','🦄','🐧','🦁','🐼','🤖','👾','🧙','🧑‍💻','🐉','🦅','🐢','🎮','⭐','🌈','🚀','💎','🔮','🎯','🌟','🏆','🐯'];
 
 /* ---- AREA COLORS ---- */
 const AREA_COLORS = {
